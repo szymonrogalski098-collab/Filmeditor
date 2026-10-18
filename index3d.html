@@ -158,6 +158,9 @@ function limbGeo(a, b, r0, r1, seg = 6) {
    RIG KOTA 3D (hierarchia kości; poza spoczynkowa = symetryczne siedzenie
    przodem do +Z; wszystkie osie lokalne = osie świata w spoczynku)
    ===================================================================== */
+// skrócenie tułowia: kompresja wysokości powyżej zadu (y > 7)
+const SY = y => (y <= 7 ? y : 7 + (y - 7) * 0.86);
+const M = (x, y, z) => V3(x, SY(y), z);
 const BONE_DEFS = (() => {
   const d = [
     ['root', null, [0, 10, -5.5], [0, 18, -3], 180],
@@ -174,15 +177,15 @@ const BONE_DEFS = (() => {
     d.push([`frontLeg${n}_upper`, 'torso', [s * 2.6, 19, 1.6], [s * 2.6, 10.5, 3.4], 80]);
     d.push([`frontLeg${n}_lower`, `frontLeg${n}_upper`, [s * 2.6, 10.5, 3.4], [s * 2.6, 2.6, 4.4], 110]);
     d.push([`frontLeg${n}_paw`, `frontLeg${n}_lower`, [s * 2.6, 2.6, 4.4], [s * 2.6, 0.6, 7.2], 70]);
-    d.push([`hindLeg${n}_upper`, 'root', [s * 4.2, 8.5, -6.5], [s * 5.0, 3.6, -2.4], 90]);
-    d.push([`hindLeg${n}_lower`, `hindLeg${n}_upper`, [s * 5.0, 3.6, -2.4], [s * 5.0, 1.4, -5.4], 120]);
-    d.push([`hindLeg${n}_paw`, `hindLeg${n}_lower`, [s * 5.0, 1.4, -5.4], [s * 5.0, 0.6, 3.6], 70]);
+    d.push([`hindLeg${n}_upper`, 'root', [s * 4.2, 8.5, -6.5], [s * 5.0, 4.0, -3.4], 90]);
+    d.push([`hindLeg${n}_lower`, `hindLeg${n}_upper`, [s * 5.0, 4.0, -3.4], [s * 5.0, 1.4, -3.0], 120]);
+    d.push([`hindLeg${n}_paw`, `hindLeg${n}_lower`, [s * 5.0, 1.4, -3.0], [s * 5.0, 0.6, 2.4], 70]);
   }
   return d;
 })();
 const BONES = {}, BONE_LIST = [];
 for (const [name, parent, j, t, lim] of BONE_DEFS) {
-  const b = { name, parent, joint: V3(...j), tip: V3(...t), lim };
+  const b = { name, parent, joint: M(...j), tip: M(...t), lim };
   b.len = b.joint.distanceTo(b.tip); b.dir0 = b.tip.clone().sub(b.joint).normalize();
   BONES[name] = b; BONE_LIST.push(b);
 }
@@ -203,7 +206,7 @@ function makeCatMaterials() {
   });
   const inner = body.clone();
   const face = new T.MeshBasicMaterial({ color: '#0b5a2a', fog: false });
-  const pre = new T.MeshBasicMaterial({ colorWrite: false, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+  const pre = new T.MeshBasicMaterial({ colorWrite: false, polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: 1 });
   return { body, inner, face, pre };
 }
 function tintCat(rig, hex, alpha) {
@@ -229,7 +232,7 @@ function spineWeights(y) {   // [root, torso, neck, head] - strefy przejścia si
 }
 function catBodyGeo() {
   const pos = [], skinI = [], skinW = [], idx = [], N = BODY_SEG, bi = ['root', 'torso', 'neck', 'head'].map(n => BONE_NAMES.indexOf(n));
-  const pushV = (x, y, z) => { pos.push(x, y, z); const w = spineWeights(y); skinI.push(...bi); skinW.push(...w); return pos.length / 3 - 1; };
+  const pushV = (x, y, z) => { pos.push(x, SY(y), z); const w = spineWeights(y); skinI.push(...bi); skinW.push(...w); return pos.length / 3 - 1; };
   BODY_RINGS.forEach(([y, zc, rx, rzF, rzB], r) => {
     for (let k = 0; k < N; k++) {
       const th = k / N * Math.PI * 2, s = Math.sin(th), c = Math.cos(th), j = (hash3(r, k, 7) - 0.5) * 0.45;
@@ -281,15 +284,15 @@ function buildCatRig() {
     }
     return m;
   }
-  const blob = (bone, c, r, d = 1, jit = 0.07, quat) => part(bone, blobGeo(r[0], r[1], r[2], d, jit), V3(...c), quat);
-  const limb = (bone, a, b, r0, r1, seg = 6) => { const l = limbGeo(V3(...a), V3(...b), r0, r1, seg); return part(bone, l.geo, l.pos, l.quat); };
+  const blob = (bone, c, r, d = 1, jit = 0.07, quat) => part(bone, blobGeo(r[0], r[1], r[2], d, jit), M(...c), quat);
+  const limb = (bone, a, b, r0, r1, seg = 6) => { const l = limbGeo(M(...a), M(...b), r0, r1, seg); return part(bone, l.geo, l.pos, l.quat); };
   const alignQ = (from, to) => new T.Quaternion().setFromUnitVectors(V3(...from).normalize(), V3(...to).normalize());
 
   // pyszczek + twarz (dwoje oczu, nosek, zaokrąglone odwrócone V)
   blob('head', [0, 33.4, 7.0], [2.0, 1.5, 1.9], 1, 0.04);
-  for (const s of [1, -1]) part('head', blobGeo(0.68, 0.88, 0.32, 1, 0.02), V3(s * 1.95, 35.3, 7.35), alignQ([0, 0, 1], [s * 0.38, 0.05, 1]), 'face');
-  part('head', blobGeo(0.5, 0.36, 0.3, 1, 0.02), V3(0, 34.15, 8.75), null, 'face');
-  const mouth = new T.CatmullRomCurve3([V3(-1.1, 32.45, 8.1), V3(-0.55, 32.85, 8.65), V3(0, 33.05, 8.95), V3(0.55, 32.85, 8.65), V3(1.1, 32.45, 8.1)], false, 'catmullrom', 0.5);
+  for (const s of [1, -1]) part('head', blobGeo(0.68, 0.88, 0.32, 1, 0.02), M(s * 1.95, 35.3, 7.35), alignQ([0, 0, 1], [s * 0.38, 0.05, 1]), 'face');
+  part('head', blobGeo(0.5, 0.36, 0.3, 1, 0.02), M(0, 34.15, 8.75), null, 'face');
+  const mouth = new T.CatmullRomCurve3([M(-1.1, 32.45, 8.1), M(-0.55, 32.85, 8.65), M(0, 33.05, 8.95), M(0.55, 32.85, 8.65), M(1.1, 32.45, 8.1)], false, 'catmullrom', 0.5);
   part('head', new T.TubeGeometry(mouth, 16, 0.13, 5, false), V3(0, 0, 0), null, 'face');
   // uszy: małe, spiczaste, trójkątne
   for (const [n, s] of [['earL', 1], ['earR', -1]]) {
@@ -306,9 +309,9 @@ function buildCatRig() {
     limb(`frontLeg${n}_lower`, [s * 2.6, 10.5, 3.4], [s * 2.6, 2.6, 4.4], 1.45, 1.2);
     blob(`frontLeg${n}_paw`, [s * 2.6, 1.1, 5.6], [1.5, 1.05, 2.3], 1, 0.06);
     // tylne łapy: udo (w spoczynku schowane w zadzie), goleń, mała "klockowata" stopa z przodu
-    limb(`hindLeg${n}_upper`, [s * 4.2, 8.5, -6.5], [s * 5.0, 3.6, -2.4], 1.5, 1.15);
-    limb(`hindLeg${n}_lower`, [s * 5.0, 3.6, -2.4], [s * 5.0, 1.5, -5.4], 1.05, 0.85);
-    blob(`hindLeg${n}_paw`, [s * 5.0, 0.9, 1.4], [1.35, 0.95, 2.5], 1, 0.06);
+    limb(`hindLeg${n}_upper`, [s * 4.2, 8.5, -6.5], [s * 5.0, 4.0, -3.4], 1.6, 1.25);
+    limb(`hindLeg${n}_lower`, [s * 5.0, 4.0, -3.4], [s * 5.0, 1.5, -3.0], 1.2, 1.0);
+    blob(`hindLeg${n}_paw`, [s * 5.0, 0.9, 0.2], [1.35, 0.95, 2.6], 1, 0.06);
   }
   // ogon: cienki i długi
   const tailR = [[1.3, 1.05], [1.05, 0.85], [0.85, 0.5]];
@@ -422,10 +425,18 @@ function sitSpec() {
     s.tail3 = { d: mixv([F, 0.2], [Rt, 0.35], [[0, 1, 0], 1]) };
     return s;
 }
+const UPV = [0, 1, 0];
+function tucked(s, Y) {   // przednie łapy schowane pod piersią
+  for (const n of ['L', 'R']) {
+    s[`frontLeg${n}_upper`] = { d: PD(Y, 0.15, -1) };
+    s[`frontLeg${n}_lower`] = { d: PD(Y, -1, -0.12) };
+    s[`frontLeg${n}_paw`] = { d: PD(Y, -1, 0) };
+  }
+}
 const POSE_SPECS = {
   sit: sitSpec(),
   stand: (() => {
-    const Y = 62, F = fwd(Y), L = LV(Y), s = { root: { r: [0, Y, 0], p: [0, 5.5, 0] } };
+    const Y = 62, F = fwd(Y), L = LV(Y), s = { root: { r: [0, Y, 0], p: [0, 2.2, 0] } };
     s.torso = { d: PD(Y, 1, 0.3) }; s.neck = { d: PD(Y, 0.3, 1) }; s.head = { abs: [4, 0, 6] };
     s.earL = { e: [0, 0, -4] }; s.earR = { e: [0, 0, 8] };
     legs(s, Y, [0.05, 0.05, 0.9], [-1, -1, -0.35]);
@@ -477,18 +488,66 @@ const POSE_SPECS = {
     s.tail1 = { d: [1, -0.05, -0.3] }; s.tail2 = { d: [1, 0.05, -0.12] }; s.tail3 = { d: [1, 0.25, 0.08] };
     return s;
   })(),
-  curl: (() => {
-    const Y = 70, F = fwd(Y), L = LV(Y), s = { root: { r: [0, Y, 0], p: [0, -4, 0] } };
-    s.torso = { d: mixv([F, 1], [[0, 1, 0], 0.15]) }; s.neck = { d: mixv([F, 0.35], [L, 0.85], [[0, 1, 0], 0.5]) };
-    s.head = { abs: [14, 20, 20] };
-    s.earL = { e: [0, 0, -6] }; s.earR = { e: [0, 0, 26] };
-    legs(s, Y, [0.1, -0.9, -1], [-1, -0.4, -0.1]);
-    s.tail1 = { d: mixv([L, 1], [F, -0.1]) }; s.tail2 = { d: mixv([L, 0.4], [F, 0.9]) }; s.tail3 = { d: mixv([F, 0.6], [L, -0.8]) };
+  curl: (() => {   // kuli się: zwarty "bochenek" z głową wciągniętą i ogonem przy łapach
+    const Y = 64, F = fwd(Y), Rt = mixv([LV(Y), -1]), s = { root: { r: [86, Y, 0], p: [0, -1.4, 0] } };
+    s.torso = { d: mixv([F, 1], [UPV, 0.12]) }; s.neck = { d: mixv([F, 0.75], [UPV, 0.45]) }; s.head = { abs: [26, 18, 4] };
+    s.earL = { e: [0, 0, -20] }; s.earR = { e: [0, 0, 20] };
+    tucked(s, Y);
+    s.tail1 = { d: mixv([F, -0.35], [Rt, 0.35], [UPV, -1]) }; s.tail2 = { d: mixv([F, 0.25], [Rt, 1], [UPV, -0.3]) }; s.tail3 = { d: mixv([F, 1], [Rt, 0.15], [UPV, -0.05]) };
+    return s;
+  })(),
+  loaf: (() => {   // bochenek: łapy schowane pod ciałem, głowa prosto
+    const Y = 64, F = fwd(Y), Rt = mixv([LV(Y), -1]), s = { root: { r: [86, Y, 0], p: [0, -1.2, 0] } };
+    s.torso = { d: mixv([F, 1], [UPV, 0.1]) }; s.neck = { d: mixv([F, 0.3], [UPV, 1]) }; s.head = { abs: [6, 14, 4] };
+    tucked(s, Y);
+    s.tail1 = { d: mixv([F, -0.35], [Rt, 0.35], [UPV, -1]) }; s.tail2 = { d: mixv([F, 0.3], [Rt, 1], [UPV, -0.3]) }; s.tail3 = { d: mixv([F, 1], [Rt, 0.1], [UPV, -0.05]) };
+    return s;
+  })(),
+  sphinx: (() => {   // sfinks: leży, przednie łapy wyciągnięte, głowa uniesiona
+    const Y = 64, F = fwd(Y), s = { root: { r: [86, Y, 0], p: [0, -1.2, 0] } };
+    s.torso = { d: mixv([F, 1], [UPV, 0.12]) }; s.neck = { d: mixv([F, 0.25], [UPV, 1]) }; s.head = { abs: [0, 6, 0] };
+    legs(s, Y, [0.75, 1, 1], [-0.6, -0.04, -0.04]);
+    s.tail1 = { d: mixv([F, -0.6], [UPV, -1]) }; s.tail2 = { d: mixv([F, -1], [LV(Y), -0.3], [UPV, -0.12]) }; s.tail3 = { d: mixv([F, -0.5], [LV(Y), -1]) };
+    return s;
+  })(),
+  sleep: (() => {   // śpi zwinięty: leży, głowa opuszczona na łapy, ogon owinięty wokół przodu
+    const Y = 64, F = fwd(Y), Rt = mixv([LV(Y), -1]), s = { root: { r: [88, Y, 0], p: [0, -1.4, 0] } };
+    s.torso = { d: mixv([F, 1], [Rt, 0.35], [UPV, 0.05]) }; s.neck = { d: mixv([F, 0.7], [Rt, 0.6], [UPV, -0.1]) }; s.head = { abs: [38, 70, -10] };
+    s.earL = { e: [0, 0, -22] }; s.earR = { e: [0, 0, 22] };
+    tucked(s, Y);
+    s.tail1 = { d: mixv([F, -0.35], [Rt, 0.35], [UPV, -1]) }; s.tail2 = { d: mixv([F, 0.3], [Rt, 1], [UPV, -0.3]) }; s.tail3 = { d: mixv([F, 1], [Rt, 0.3], [UPV, -0.05]) };
+    return s;
+  })(),
+  side: (() => {   // leży rozciągnięty na boku
+    const Y = 10, s = { root: { r: [0, Y, 90], p: [0, -1.6, 0] } };
+    s.neck = { e: [0, 0, -22] }; s.head = { e: [0, 0, -18] };
+    for (const n of ['L', 'R']) {
+      s[`frontLeg${n}_upper`] = { e: [-55, 0, 0] }; s[`frontLeg${n}_lower`] = { e: [-10, 0, 0] };
+    }
+    s.tail1 = { e: [0, -35, 0] };
+    return s;
+  })(),
+  back: (() => {   // na plecach, łapki w górze
+    const Y = 70, F = fwd(Y), s = { root: { r: [-84, Y, 0], p: [0, -1.6, 0] } };
+    s.torso = { d: mixv([F, 1], [UPV, 0.12]) }; s.neck = { d: mixv([F, 1], [UPV, 0.15]) }; s.head = { abs: [-10, 30, 150] };
+    legs(s, Y, [0.3, 0.7, 1], [1, 0.6, 0.15]);
+    hind(s, Y, [-0.15, 0.25, 1], [1, 1, 0.3]);
+    s.tail1 = { d: mixv([F, -1], [UPV, -0.05]) }; s.tail2 = { d: mixv([F, -1], [LV(Y), 0.4]) }; s.tail3 = { d: mixv([F, -0.6], [LV(Y), 0.8]) };
+    return s;
+  })(),
+  hunt: (() => {   // poluje: przyczajony nisko, głowa do przodu, ogon prosto
+    const Y = 62, F = fwd(Y), s = { root: { r: [74, Y, 0], p: [0, -0.6, 0] } };
+    s.torso = { d: mixv([F, 1], [UPV, -0.08]) }; s.neck = { d: mixv([F, 1], [UPV, 0.25]) }; s.head = { abs: [4, 34, 0] };
+    s.earL = { e: [0, 0, -8] }; s.earR = { e: [0, 0, 8] };
+    legs(s, Y, [-0.55, 0.45, 1], [-0.8, -1, -0.08]);
+    hind(s, Y, [0.75, -1, 1], [-0.45, -0.35, -0.15]);
+    s.tail1 = { d: mixv([F, -0.7], [UPV, -1]) }; s.tail2 = { d: mixv([F, -1], [UPV, -0.1]) }; s.tail3 = { d: mixv([F, -1], [UPV, 0.25]) };
     return s;
   })()
 };
 const POSES = {}; for (const k in POSE_SPECS) POSES[k] = poseFromSpec(POSE_SPECS[k]);
-const POSE_LABELS = [['sit', 'Siedzi'], ['stand', 'Stoi'], ['lie', 'Leży'], ['jump', 'Skacze'], ['stretch', 'Wyciąga się'], ['tailUp', 'Ogon w górze'], ['curl', 'Kuli się'], ['lookUp', 'Patrzy w górę']];
+const POSE_LABELS = [['sit', 'Siedzi'], ['stand', 'Stoi'], ['lie', 'Leży'], ['jump', 'Skacze'], ['stretch', 'Wyciąga się'], ['tailUp', 'Ogon w górze'], ['curl', 'Kuli się'], ['lookUp', 'Patrzy w górę'],
+  ['loaf', 'Bochenek'], ['sphinx', 'Sfinks'], ['sleep', 'Śpi zwinięty'], ['side', 'Na boku'], ['back', 'Na plecach'], ['hunt', 'Poluje']];
 
 /* =====================================================================
    RENDERER: scena -> RT, poświata (maska + rozmycie wieloskalowe), kompozyt
@@ -561,7 +620,7 @@ function swapForGlow(on) {
     if (role === 'prepass' || role === 'keep') return;
     if (on) {
       o.userData._m = o.material; o.userData._v = o.visible;
-      if (role === 'skip') o.visible = false;
+      if (role === 'skip' || role === 'glass') o.visible = false;
       else if (o.userData.neon) o.material = neonMat(o.userData.neon);
       else if (o.userData.layerId != null && glowMats.has(o.userData.layerId)) o.material = glowMats.get(o.userData.layerId);
       else o.material = blackMat;
@@ -603,7 +662,7 @@ function renderPipeline(w, h, viewZoom, toScreen) {
    AKCESORIA 3D (przypięte do kości; współrzędne w układzie głowy / szyi)
    ===================================================================== */
 const stdMat = (color, o = {}) => new T.MeshStandardMaterial(Object.assign({ color, roughness: 0.55, metalness: 0.05, flatShading: true }, o));
-const HEAD_CENTER = V3(0, 35.2, 3.8), NECK_CENTER = V3(0, 27.6, 1.2);
+const HEAD_CENTER = M(0, 35.2, 3.8), NECK_CENTER = M(0, 27.6, 1.2);
 const ACC_HEAD_K = 0.68, ACC_NECK_K = 0.82;   // akcesoria projektowane dla głowy o promieniu ~6.5
 
 function mesh(geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) {
@@ -744,12 +803,10 @@ function wheelMesh(x, y, r, w, z, mats) {
 const VEH_SPECS = {
   car: [
     {
-      name: 'Sedan', width: 20, snaps: [['Dach', -20, -168], ['Maska', 150, -104]],
+      name: 'Sedan', width: 20, snaps: [['Dach', -20, -168], ['Maska', 150, -104], ['W środku', 22, -102, 0.17, -3]],
+      cabin: [[-135, -100], [-95, -164], [40, -168], [112, -102]], cabinDepth: 17,
       parts: [
         ['body', [[-262, -28], [-258, -90], [-190, -100], [-120, -102], [50, -104], [160, -98], [255, -72], [264, -40], [264, -28]], 20, 1],
-        ['body', [[-135, -100], [-95, -162], [40, -168], [112, -102]], 17, 1],
-        ['glassD', [[-122, -106], [-92, -154], [-10, -156], [-10, -106]], 19.4, 0],
-        ['glassD', [[2, -106], [2, -157], [36, -157], [94, -106]], 19.4, 0],
         ['metal', [[236, -56], [267, -52], [267, -34], [236, -34]], 22, 0],
         ['lamp', [[246, -92], [266, -88], [266, -70], [244, -72]], 17, 0],
         ['red', [[-267, -88], [-246, -92], [-246, -70], [-267, -70]], 17, 0]
@@ -757,11 +814,10 @@ const VEH_SPECS = {
       wheels: [[-150, -40, 40, 3.6, 9.6], [150, -40, 40, 3.6, 9.6]]
     },
     {
-      name: 'Sportowy', width: 21, snaps: [['Dach', -10, -142], ['Bagażnik', -205, -94]],
+      name: 'Sportowy', width: 21, snaps: [['Dach', -10, -142], ['Bagażnik', -205, -94], ['W środku', 14, -88, 0.14, -3]],
+      cabin: [[-100, -92], [-52, -140], [30, -142], [108, -84]], cabinDepth: 17.5,
       parts: [
         ['body', [[-272, -26], [-268, -76], [-180, -94], [120, -84], [262, -52], [274, -30], [274, -26]], 21, 1],
-        ['body', [[-100, -92], [-52, -140], [30, -142], [108, -84]], 17.5, 1],
-        ['glassD', [[-84, -94], [-50, -130], [22, -132], [84, -88]], 19.6, 0],
         ['shade', [[-276, -84], [-226, -88], [-228, -98], [-280, -98]], 22.4, 0],
         ['lamp', [[240, -64], [272, -50], [272, -42], [238, -50]], 17, 0],
         ['red', [[-274, -74], [-262, -76], [-262, -60], [-274, -60]], 17, 0]
@@ -793,7 +849,7 @@ const VEH_SPECS = {
         ['dark', [[-90, -110], [-20, -118], [-14, -104], [-86, -98]], 6.6, 0],
         ['metal', [[-30, -76], [40, -80], [36, -40], [-26, -38]], 6, 0],
         ['body', [[14, -70], [54, -140], [104, -122], [126, -84], [74, -58]], 7.5, 1],
-        ['glassD', [[56, -138], [84, -162], [104, -126]], 9.2, 0],
+        ['glass', [[56, -138], [84, -162], [104, -126]], 9.2, 0],
         ['lamp', [[104, -104], [124, -98], [124, -86], [100, -90]], 5.4, 0],
         ['metal', [[66, -70], [78, -70], [118, -52], [106, -52]], 3.2, 0]
       ],
@@ -813,28 +869,28 @@ function finGeo(pts, w) {     // płetwa w płaszczyźnie XY wyciągnięta w Z
   const g = new T.ExtrudeGeometry(sh, { depth: w, bevelEnabled: false }); g.translate(0, 0, -w / 2); return g;
 }
 const PLANE_SPECS = [
-  { name: 'Śmigłowy', snaps: [['Kokpit', 3, 13.2], ['Grzbiet', -12, 11.6]],
+  { name: 'Śmigłowy', snaps: [['Kokpit', 3, 13.2], ['Grzbiet', -12, 11.6], ['W kokpicie', 5, 12.6, 0.11]],
     build(m, mats, g) {
       const body = lathe([[0, -26], [2.2, -24], [4.2, -15], [5, -1], [4.5, 12], [2.7, 22], [1.2, 27], [0, 28]], 8); body.translate(0, 0, 0);
       g.add(mesh(body, m, 0, 8, 0));
       g.add(mesh(new T.BoxGeometry(8, 0.9, 50), mats.light, 3, 6.4, 0, 0, 0, 0.0));
       g.add(mesh(new T.BoxGeometry(5, 0.7, 17), mats.light, -22, 8.8, 0));
       g.add(mesh(finGeo([[-3, 0], [3, 0], [0, 9], [-3, 9]], 0.8), mats.shade, -22, 9, 0));
-      g.add(mesh(new T.SphereGeometry(3.6, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2), mats.glassD, 5, 11.6, 0, 0, 0, 0, 0));
+      g.add(mesh(new T.SphereGeometry(3.9, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), mats.glass, 5, 12.4, 0));
       g.add(mesh(new T.ConeGeometry(1.7, 3.6, 8), mats.metal, 29.5, 8, 0, 0, 0, -Math.PI / 2));
       g.add(mesh(new T.BoxGeometry(0.6, 16, 1.4), mats.metal, 30.3, 8, 0));
       g.add(mesh(new T.BoxGeometry(0.6, 1.4, 16), mats.metal, 30.3, 8, 0));
       for (const z of [-5.5, 5.5]) { g.add(mesh(new T.CylinderGeometry(0.4, 0.4, 5, 5), mats.dark, 6, 3.4, z)); g.add(wheelRaw(6, 1.5, z, 1.5, mats)); }
       g.add(mesh(new T.CylinderGeometry(0.3, 0.3, 4, 5), mats.dark, -23, 5.6, 0)); g.add(wheelRaw(-23, 1.0, 0, 1.0, mats));
     } },
-  { name: 'Odrzutowiec', snaps: [['Kokpit', 12, 11.6], ['Grzbiet', -8, 10.4]],
+  { name: 'Odrzutowiec', snaps: [['Kokpit', 12, 11.6], ['Grzbiet', -8, 10.4], ['W kokpicie', 12, 10.6, 0.09]],
     build(m, mats, g) {
       const body = lathe([[0, -27], [2.0, -25], [3.6, -14], [4.2, 4], [3.4, 20], [1.6, 30], [0, 36]], 8);
       g.add(mesh(body, m, 0, 7, 0));
       g.add(mesh(triPrism([[8, 0], [-14, 20], [-14, -20]], 0.9), mats.light, -2, 5.6, 0));
       g.add(mesh(triPrism([[-26, 0], [-34, 9], [-34, -9]], 0.7), mats.light, 0, 7.4, 0));
       for (const z of [-2.6, 2.6]) g.add(mesh(finGeo([[-3, 0], [3, 0], [-1, 9]], 0.7), mats.shade, -24, 8, z * 1.0));
-      const canopy = mesh(new T.SphereGeometry(3, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2), mats.glassD, 12, 9.6, 0); canopy.scale.set(2.2, 1, 1); g.add(canopy);
+      const canopy = mesh(new T.SphereGeometry(3, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), mats.glass, 12, 10.4, 0); canopy.scale.set(2.2, 1.15, 1); g.add(canopy);
       g.add(mesh(new T.CylinderGeometry(2.2, 2.6, 3, 8), mats.dark, -27, 7, 0, 0, 0, Math.PI / 2));
     } }
 ];
@@ -843,11 +899,32 @@ function wheelRaw(x, y, z, r, mats) {
   const m = new T.Mesh(g, mats.dark); m.position.set(x, y, z); return m;
 }
 
+function glassMat() {
+  const m = new T.MeshStandardMaterial({ color: '#bfeaff', transparent: true, opacity: 0.22, roughness: 0.05, metalness: 0.2, side: T.DoubleSide, depthWrite: false });
+  m.userData.baseOpacity = 0.22; return m;
+}
+// pusta kabina: dach + słupki + przezroczyste szyby (boczne, przednia, tylna); pts: [tył-dół, tył-góra, przód-góra, przód-dół]
+function glassCabin(g, pts, depth, mats) {
+  const P = pts.map(p => new T.Vector2(p[0] * K, -p[1] * K)), hz = depth / 2, t = 0.7;
+  const roof = new T.Shape([P[1], P[2], new T.Vector2(P[2].x, P[2].y - t), new T.Vector2(P[1].x, P[1].y - t)]);
+  const rg = new T.ExtrudeGeometry(roof, { depth, bevelEnabled: false }); rg.translate(0, 0, -hz); g.add(new T.Mesh(rg, mats.body));
+  const bar = (a, b, z) => { const l = limbGeo(V3(a.x, a.y, z), V3(b.x, b.y, z), 0.45, 0.45, 4); const m = new T.Mesh(l.geo, mats.body); m.position.copy(l.pos); m.quaternion.copy(l.quat); g.add(m); };
+  const mid = new T.Vector2((P[0].x + P[3].x) / 2, P[0].y), midTop = new T.Vector2(mid.x, P[1].y + (P[2].y - P[1].y) * ((mid.x - P[1].x) / (P[2].x - P[1].x)));
+  for (const z of [-hz + 0.45, hz - 0.45]) { bar(P[0], P[1], z); bar(P[3], P[2], z); bar(mid, midTop, z); bar(P[0], P[3], z); }
+  const side = new T.ShapeGeometry(new T.Shape(P));
+  for (const z of [-hz, hz]) { const m = new T.Mesh(side, mats.glass); m.position.z = z; g.add(m); }
+  const quad = (a, b) => {
+    const geo = new T.BufferGeometry();
+    geo.setAttribute('position', new T.Float32BufferAttribute([a.x, a.y, -hz, b.x, b.y, -hz, b.x, b.y, hz, a.x, a.y, -hz, b.x, b.y, hz, a.x, a.y, hz], 3));
+    geo.computeVertexNormals(); g.add(new T.Mesh(geo, mats.glass));
+  };
+  quad(P[0], P[1]); quad(P[3], P[2]);
+}
 function vehicleMats(color) {
   const c = new T.Color(color);
   return {
     body: stdMat(c), shade: stdMat(c.clone().multiplyScalar(0.5)), light: stdMat(c.clone().lerp(new T.Color('#ffffff'), 0.35)),
-    dark: stdMat('#15181b'), metal: stdMat('#9aa5ab', { metalness: 0.5, roughness: 0.4 }), glassD: stdMat('#16323c', { metalness: 0.3, roughness: 0.2 }),
+    dark: stdMat('#15181b'), metal: stdMat('#9aa5ab', { metalness: 0.5, roughness: 0.4 }), glassD: stdMat('#16323c', { metalness: 0.3, roughness: 0.2 }), glass: glassMat(),
     lamp: stdMat('#fff3a8', { emissive: '#fff3a8', emissiveIntensity: 0.9 }), red: stdMat('#ff4040', { emissive: '#ff2020', emissiveIntensity: 0.6 })
   };
 }
@@ -855,16 +932,17 @@ function buildVehicle(kind, variant, color) {
   const g = new T.Group(), mats = vehicleMats(color);
   let snaps;
   if (kind === 'plane') {
-    const s = PLANE_SPECS[variant]; s.build(mats.body, mats, g); snaps = s.snaps.map(([n, x, y]) => ({ name: n, pos: V3(x, y, 0) }));
+    const s = PLANE_SPECS[variant]; s.build(mats.body, mats, g); snaps = s.snaps.map(([n, x, y, sc, z]) => ({ name: n, pos: V3(x, y, z || 0), scale: sc }));
   } else {
     const s = VEH_SPECS[kind][variant];
     for (const [tone, pts, depth, bevel] of s.parts) g.add(new T.Mesh(profileGeo(pts, depth, bevel), mats[tone]));
     for (const [x, y, r, w, z] of s.wheels) {
       if (z === 0) g.add(wheelMesh(x, y, r, w, 0, mats)); else { g.add(wheelMesh(x, y, r, w, z, mats)); g.add(wheelMesh(x, y, r, w, -z, mats)); }
     }
-    snaps = s.snaps.map(([n, x, y]) => ({ name: n, pos: V3(x * K, -y * K, 0) }));
+    if (s.cabin) glassCabin(g, s.cabin, s.cabinDepth, mats);
+    snaps = s.snaps.map(([n, x, y, sc, z]) => ({ name: n, pos: V3(x * K, -y * K, z || 0), scale: sc }));
   }
-  g.traverse(o => { if (o.isMesh) o.userData.role = 'veh'; });
+  g.traverse(o => { if (o.isMesh) o.userData.role = o.material === mats.glass ? 'glass' : 'veh'; });
   return { group: g, mats, snaps };
 }
 const VEH_LABEL = { car: 'Samochód', moto: 'Motocykl', plane: 'Samolot' };
@@ -1026,15 +1104,182 @@ function buildRoom() {
   // komoda + lampa + roślina
   box(80, 55, 36, '#4b3425', RW / 2 - 40, 27.5, -120); box(18, 3, 18, '#222', RW / 2 - 40, 57, -120);
   const shade = neonBox(16, 20, 16, '#ffcf8a', RW / 2 - 40, 70, -120); shade.userData.neon = '#6b4a2a'; g.add(shade);
-  const pot = new T.Mesh(new T.CylinderGeometry(9, 7, 14, 8), new T.MeshStandardMaterial({ color: '#8a4b34', flatShading: true })); pot.position.set(RW / 2 - 28, 7, 60); g.add(pot);
-  for (let i = 0; i < 7; i++) { const l = new T.Mesh(new T.ConeGeometry(4, 30, 4), new T.MeshStandardMaterial({ color: '#2f7a4a', flatShading: true })); const a = i / 7 * 6.28; l.position.set(RW / 2 - 28 + Math.cos(a) * 6, 28, 60 + Math.sin(a) * 6); l.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5); g.add(l); }
+  const PX = -RW / 2 + 30, PZ = 150;
+  const pot = new T.Mesh(new T.CylinderGeometry(9, 7, 14, 8), new T.MeshStandardMaterial({ color: '#8a4b34', flatShading: true })); pot.position.set(PX, 7, PZ); g.add(pot);
+  for (let i = 0; i < 7; i++) { const l = new T.Mesh(new T.ConeGeometry(4, 30, 4), new T.MeshStandardMaterial({ color: '#2f7a4a', flatShading: true })); const a = i / 7 * 6.28; l.position.set(PX + Math.cos(a) * 6, 28, PZ + Math.sin(a) * 6); l.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5); g.add(l); }
   const frameM = new T.MeshStandardMaterial({ color: '#17141c' });
   for (const [x, c] of [[-150, '#e07a5f'], [150, '#3d8fb0']]) { box(40, 52, 2, 0, x, 150, -RD / 2 + 1.5, frameM); const pic = neonBox(32, 44, 0.6, c, x, 150, -RD / 2 + 2.6); pic.userData.neon = null; g.add(pic); }
+  buildDeskSetup(g, box, -RD / 2);
+  buildBed(g, box, RW / 2);
   const lights = [new T.HemisphereLight('#7a6f9a', '#1a1420', 0.5)];
+  const screenL = new T.PointLight('#6ab0ff', 0.55, 260, 1.5); screenL.position.set(-112, 104, -170); lights.push(screenL);
   const lamp = new T.PointLight('#ffa860', 1.5, 420, 1.5); lamp.position.set(RW / 2 - 40, 78, -110); lights.push(lamp);
   const moonL = new T.PointLight('#8fb4ff', 0.9, 420, 1.5); moonL.position.set(0, 150, -RD / 2 + 40); lights.push(moonL);
   const fill = new T.PointLight('#ffd9b0', 0.4, 420, 1.5); fill.position.set(0, 200, 60); lights.push(fill);
   return { group: g, lights, fog: null, bg: '#15121c', cam: { theta: 12, phi: 12, dist: 165, target: [0, 22, 0] }, update() {} };
+}
+
+function screenTexture(seed, accent) {
+  const rnd = makeRng(seed);
+  return canvasTex(256, 144, (x, w, h) => {
+    const gr = x.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#0d1a2e'); gr.addColorStop(1, '#14284a'); x.fillStyle = gr; x.fillRect(0, 0, w, h);
+    x.fillStyle = '#1e2c44'; x.fillRect(0, 0, w, 12);
+    for (let i = 0; i < 14; i++) { x.fillStyle = rnd() < 0.3 ? accent : rnd() < 0.5 ? '#7fd4ff' : '#cfe3ff'; x.globalAlpha = 0.85; x.fillRect(14 + (rnd() * 20 | 0), 22 + i * 8, 40 + rnd() * 120, 3); }
+    x.globalAlpha = 1; x.fillStyle = accent; x.fillRect(w - 70, 30, 52, 52);
+  });
+}
+// stanowisko komputerowe: biurko, 2 monitory, klawiatura, myszka, PC z RGB, krzesło gamingowe
+function buildDeskSetup(g, box, backZ) {
+  const DX = -112, DZ = backZ + 34, TOP = 76, wood = new T.MeshStandardMaterial({ color: '#2b2a33', roughness: 0.6 });
+  box(132, 4, 56, 0, DX, TOP, DZ, wood);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(4, TOP - 2, 4, '#17161c', DX + sx * 61, (TOP - 2) / 2, DZ + sz * 24);
+  for (const [mx, ry, acc] of [[-142, 0.28, '#00ff40'], [-82, -0.28, '#ff4fa3']]) {
+    const mon = new T.Group(); mon.position.set(mx, TOP + 2, DZ - 12); mon.rotation.y = ry;
+    const st = new T.Mesh(new T.BoxGeometry(14, 1.2, 10), new T.MeshStandardMaterial({ color: '#111' })); st.position.y = 0.6; mon.add(st);
+    const neck = new T.Mesh(new T.BoxGeometry(3, 14, 2), new T.MeshStandardMaterial({ color: '#111' })); neck.position.set(0, 8, -2); mon.add(neck);
+    const bez = new T.Mesh(new T.BoxGeometry(54, 32, 2.4), new T.MeshStandardMaterial({ color: '#0c0d12', roughness: 0.4 })); bez.position.set(0, 26, 0); mon.add(bez);
+    const scr = new T.Mesh(new T.PlaneGeometry(51, 29), new T.MeshBasicMaterial({ map: screenTexture(mx * 7 | 0, acc) })); scr.position.set(0, 26, 1.25); scr.userData.neon = '#16304f'; mon.add(scr);
+    g.add(mon);
+  }
+  box(46, 1.6, 15, '#1b1c22', DX, TOP + 2.8, DZ + 8);
+  const kbGlow = neonBox(44, 0.3, 13, '#2fa8ff', DX, TOP + 3.75, DZ + 8); kbGlow.userData.neon = '#0e3550'; kbGlow.material.transparent = true; kbGlow.material.opacity = 0.35; g.add(kbGlow);
+  box(26, 0.5, 20, '#121318', DX + 40, TOP + 2.2, DZ + 8); box(3.6, 2, 6, '#22232a', DX + 40, TOP + 3.4, DZ + 8);
+  box(22, 46, 44, '#14151b', DX + 86, 23, DZ - 2);
+  const rgb = neonBox(0.6, 40, 2, '#b04dff', DX + 74.7, 24, DZ + 18); rgb.userData.neon = '#4a1f6a'; g.add(rgb);
+  // krzesło
+  const CX = DX, CZ = DZ + 62, dark = new T.MeshStandardMaterial({ color: '#1b1c22', roughness: 0.7, flatShading: true }), acc = new T.MeshStandardMaterial({ color: '#c8323c', flatShading: true });
+  box(46, 7, 44, 0, CX, 48, CZ, dark); box(48, 64, 8, 0, CX, 84, CZ + 22, dark).rotation.x = 0.12; box(10, 58, 8.4, 0, CX, 84, CZ + 22, acc).rotation.x = 0.12;
+  for (const sx of [-1, 1]) { box(4, 3, 30, 0, CX + sx * 25, 62, CZ - 2, dark); box(3, 12, 3, 0, CX + sx * 25, 55, CZ, dark); }
+  const lift = new T.Mesh(new T.CylinderGeometry(2, 2.4, 34, 8), new T.MeshStandardMaterial({ color: '#555b62', metalness: 0.6, roughness: 0.3 })); lift.position.set(CX, 28, CZ); g.add(lift);
+  for (let i = 0; i < 5; i++) {
+    const a = i / 5 * Math.PI * 2, leg = new T.Mesh(new T.BoxGeometry(26, 3, 4), dark); leg.position.set(CX + Math.cos(a) * 13, 8, CZ + Math.sin(a) * 13); leg.rotation.y = -a; g.add(leg);
+    const w = new T.Mesh(new T.SphereGeometry(3, 6, 4), dark); w.position.set(CX + Math.cos(a) * 25, 3, CZ + Math.sin(a) * 25); g.add(w);
+  }
+}
+// łóżko pod prawą ścianą
+function buildBed(g, box, rightX) {
+  const BX = rightX - 60, BZ = 92;
+  box(112, 22, 204, '#5a3f30', BX, 11, BZ); box(112, 56, 7, '#4a3226', BX, 28, BZ - 104);
+  box(106, 14, 196, '#ebe6dc', BX, 29, BZ);
+  const blanket = box(110, 6, 128, '#4a5fa8', BX, 37, BZ + 36); blanket.material.flatShading = true;
+  box(110, 3, 10, '#3b4d8a', BX, 39.5, BZ - 26);
+  box(66, 11, 30, '#f6f2ea', BX, 41, BZ - 78).rotation.z = 0.04;
+  box(30, 40, 30, '#4b3425', BX - 75, 20, BZ - 88);
+  const nl = neonBox(10, 14, 10, '#ffcf8a', BX - 75, 47, BZ - 88); nl.userData.neon = '#5a3f1f'; g.add(nl);
+}
+
+/* ---------- WSPÓLNE: niebo z gradientem zachodu ---------- */
+function skyDome(stops) {
+  const R = 3000, geo = new T.SphereGeometry(R, 32, 16), p = geo.attributes.position, cols = [], c = new T.Color(), c2 = new T.Color();
+  for (let i = 0; i < p.count; i++) {
+    const y = p.getY(i) / R; let k = 0;
+    while (k < stops.length - 2 && y > stops[k + 1][0]) k++;
+    const [y0, h0] = stops[k], [y1, h1] = stops[k + 1];
+    c.set(h0).lerp(c2.set(h1), clamp((y - y0) / (y1 - y0), 0, 1)); cols.push(c.r, c.g, c.b);
+  }
+  geo.setAttribute('color', new T.Float32BufferAttribute(cols, 3));
+  const m = new T.Mesh(geo, new T.MeshBasicMaterial({ vertexColors: true, side: T.BackSide, fog: false, depthWrite: false }));
+  m.userData.role = 'skip'; m.renderOrder = -10; return m;
+}
+function sunDisc(x, y, z, r, color, glow) {
+  const s = neonBox(1, 1, 1, color, x, y, z); s.geometry = new T.CircleGeometry(r, 32); s.userData.neon = glow; s.lookAt(0, y, 0); return s;
+}
+function pineForest(g, rnd, n, rMin, rMax, avoid) {
+  const trunkG = new T.CylinderGeometry(1.4, 2.2, 1, 6), coneG = new T.ConeGeometry(1, 1, 7);
+  const trunks = new T.InstancedMesh(trunkG, new T.MeshStandardMaterial({ color: '#3a2a22', flatShading: true }), n);
+  const cones = new T.InstancedMesh(coneG, new T.MeshStandardMaterial({ color: '#2c5a40', flatShading: true, roughness: 0.9 }), n * 3);
+  const m = new T.Matrix4(), q = new T.Quaternion(), sc = new T.Vector3(), p = new T.Vector3(), col = new T.Color();
+  let i = 0;
+  while (i < n) {
+    const a = rnd() * Math.PI * 2, r = rMin + Math.pow(rnd(), 0.8) * (rMax - rMin), x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (avoid(x, z)) continue;
+    const H = rr(rnd, 70, 170); q.setFromAxisAngle(UP, rnd() * 6);
+    m.compose(p.set(x, H * 0.18, z), q, sc.set(1, H * 0.36, 1)); trunks.setMatrixAt(i, m);
+    for (let k = 0; k < 3; k++) {
+      const ch = H * (0.5 - k * 0.1), cr = H * (0.2 - k * 0.04);
+      m.compose(p.set(x, H * (0.3 + k * 0.2) + ch * 0.4, z), q, sc.set(cr, ch, cr)); cones.setMatrixAt(i * 3 + k, m);
+      cones.setColorAt(i * 3 + k, col.set('#2c5a40').offsetHSL(rr(rnd, -0.03, 0.03), 0, rr(rnd, -0.05, 0.05)));
+    }
+    i++;
+  }
+  g.add(trunks, cones);
+}
+
+/* ---------- GÓRY (zachód słońca) ---------- */
+function buildMountains() {
+  const g = new T.Group(), rnd = makeRng(31);
+  g.add(skyDome([[-1, '#d98a6e'], [0, '#ffb98a'], [0.06, '#f58a6c'], [0.2, '#b65a7c'], [0.45, '#55396e'], [1, '#1d1a3a']]));
+  g.add(sunDisc(-420, 150, -2300, 130, '#ffe2a0', '#ff9a50'));
+  const gg = new T.PlaneGeometry(5000, 5000, 80, 80), gp = gg.attributes.position;
+  for (let i = 0; i < gp.count; i++) {
+    const x = gp.getX(i), y = gp.getY(i), r = Math.hypot(x, y);
+    const n = Math.sin(x * 0.008 + 1.3) * Math.cos(y * 0.006) + 0.5 * Math.sin(x * 0.021 + y * 0.017) + (hash3(x, y, 1) - 0.5) * 0.4;
+    gp.setZ(i, r < 230 ? 0 : n * 34 * Math.min(1, (r - 230) / 500));
+  }
+  gg.computeVertexNormals();
+  const ground = new T.Mesh(gg, new T.MeshStandardMaterial({ color: '#6f7d4c', flatShading: true, roughness: 1 })); ground.rotation.x = -Math.PI / 2; g.add(ground);
+  for (let i = 0; i < 24; i++) {
+    const a = -Math.PI * 0.95 + rnd() * Math.PI * 0.9 + (i % 2 ? Math.PI * 0.95 : 0), d = rr(rnd, 1250, 2100), h = rr(rnd, 260, 640), r = h * rr(rnd, 0.6, 0.9);
+    const cg = new T.ConeGeometry(r, h, 7, 3), cp = cg.attributes.position;
+    for (let k = 0; k < cp.count; k++) { const yy = cp.getY(k); if (yy < h / 2 - 1) { cp.setX(k, cp.getX(k) * rr(rnd, 0.85, 1.15)); cp.setZ(k, cp.getZ(k) * rr(rnd, 0.85, 1.15)); } }
+    cg.computeVertexNormals();
+    const col = new T.Color('#5a4d7c').lerp(new T.Color('#3a3458'), rnd());
+    const mtn = new T.Mesh(cg, new T.MeshStandardMaterial({ color: col, flatShading: true, roughness: 1 })); mtn.position.set(Math.cos(a) * d, h / 2 - 20, Math.sin(a) * d); g.add(mtn);
+    const cap = new T.Mesh(new T.ConeGeometry(r * 0.3, h * 0.3, 7), new T.MeshStandardMaterial({ color: '#f3e4ee', flatShading: true })); cap.position.set(mtn.position.x, h - 20 - h * 0.15 + 1, mtn.position.z); cap.rotation.y = mtn.rotation.y; g.add(cap);
+  }
+  pineForest(g, rnd, 80, 200, 850, (x, z) => (z < 120 && Math.abs(x) < 420) || (z >= 120 && Math.abs(x) < 160));
+  for (let i = 0; i < 12; i++) { const a = rnd() * 6.28, r = rr(rnd, 40, 200), rock = new T.Mesh(blobGeo(rr(rnd, 3, 10), rr(rnd, 2, 6), rr(rnd, 3, 10), 1, 0.2), new T.MeshStandardMaterial({ color: '#6a6470', flatShading: true })); rock.position.set(Math.cos(a) * r, 1, Math.sin(a) * r - 40); g.add(rock); }
+  const lights = [new T.HemisphereLight('#ffc6a8', '#2c3828', 0.7)];
+  const sun = new T.DirectionalLight('#ffb070', 1.15); sun.position.set(-420, 260, -1500); lights.push(sun);
+  return { group: g, lights, fog: new T.Fog('#d98a72', 600, 2900), bg: '#d98a72', cam: { theta: 8, phi: 7, dist: 165, target: [0, 24, 0] }, update() {} };
+}
+
+/* ---------- PLAŻA (zachód słońca) ---------- */
+function palmTree(g, x, z, h, lean, rnd) {
+  const trunkM = new T.MeshStandardMaterial({ color: '#7a5a3e', flatShading: true }), leafM = new T.MeshStandardMaterial({ color: '#2b5d3c', flatShading: true, side: T.DoubleSide });
+  let px = x, py = 0, pz = z; const seg = 7;
+  for (let i = 0; i < seg; i++) {
+    const t = (i + 1) / seg, nx = x + lean * h * t * t, ny = h * t, a = V3(px, py, pz), b = V3(nx, ny, pz);
+    const l = limbGeo(a, b, 3.2 - i * 0.25, 3.0 - i * 0.25, 6), m = new T.Mesh(l.geo, trunkM); m.position.copy(l.pos); m.quaternion.copy(l.quat); g.add(m);
+    px = nx; py = ny;
+  }
+  for (let i = 0; i < 8; i++) {
+    const a = i / 8 * Math.PI * 2 + rnd() * 0.3, leaf = new T.ConeGeometry(4, 42, 4); leaf.translate(0, 21, 0); leaf.scale(1, 1, 0.22);
+    const m = new T.Mesh(leaf, leafM); m.position.set(px, py, pz);
+    m.quaternion.setFromUnitVectors(UP, V3(Math.cos(a), -0.35 - rnd() * 0.3, Math.sin(a)).normalize()); g.add(m);
+  }
+  for (let i = 0; i < 3; i++) { const c = new T.Mesh(new T.IcosahedronGeometry(2.2, 0), new T.MeshStandardMaterial({ color: '#4a3424', flatShading: true })); c.position.set(px + Math.cos(i * 2.1) * 3, py - 3, pz + Math.sin(i * 2.1) * 3); g.add(c); }
+}
+function buildBeach() {
+  const g = new T.Group(), rnd = makeRng(77), SHORE = -150;
+  g.add(skyDome([[-1, '#f2a780'], [0, '#ffd08c'], [0.05, '#ff9a6a'], [0.17, '#e0607c'], [0.45, '#5d3576'], [1, '#1f1838']]));
+  g.add(sunDisc(0, 95, -2700, 170, '#ffe0a0', '#ff9a50'));
+  const sg = new T.PlaneGeometry(4000, 900, 70, 16), sp = sg.attributes.position;
+  for (let i = 0; i < sp.count; i++) { const x = sp.getX(i), y = sp.getY(i); sp.setZ(i, (y > 380 ? (y - 380) * 0.06 : 0) + Math.sin(x * 0.02 + y * 0.05) * 1.2 * Math.min(1, Math.abs(x) / 300)); }
+  sg.computeVertexNormals();
+  const sand = new T.Mesh(sg, new T.MeshStandardMaterial({ color: '#e8bf8e', flatShading: true, roughness: 1 })); sand.rotation.x = -Math.PI / 2; sand.position.z = SHORE + 450; g.add(sand);
+  const wg = new T.PlaneGeometry(6000, 3200, 72, 40);
+  const water = new T.Mesh(wg, new T.MeshStandardMaterial({ color: '#4b5d9e', flatShading: true, roughness: 0.25, metalness: 0.35 }));
+  water.rotation.x = -Math.PI / 2; water.position.set(0, -1.2, SHORE - 1600); g.add(water);
+  const path = new T.Mesh(new T.PlaneGeometry(110, 2500), new T.MeshBasicMaterial({ color: '#ffb46a', transparent: true, opacity: 0.32, blending: T.AdditiveBlending, depthWrite: false, fog: false }));
+  path.rotation.x = -Math.PI / 2; path.position.set(0, 0.2, SHORE - 1300); path.userData.role = 'skip'; g.add(path);
+  const foam = new T.Mesh(new T.BoxGeometry(6000, 0.5, 5), new T.MeshBasicMaterial({ color: '#fff4ea', transparent: true, opacity: 0.75 })); foam.position.set(0, 0.2, SHORE); g.add(foam);
+  palmTree(g, -190, -60, 120, 0.35, rnd); palmTree(g, -260, 40, 145, 0.25, rnd); palmTree(g, 210, -20, 130, -0.3, rnd); palmTree(g, 300, 110, 110, -0.2, rnd);
+  const pole = new T.Mesh(new T.CylinderGeometry(0.8, 0.8, 70, 6), new T.MeshStandardMaterial({ color: '#e8e2d6' })); pole.position.set(120, 35, 50); pole.rotation.z = -0.08; g.add(pole);
+  const canopy = new T.Mesh(new T.ConeGeometry(46, 16, 8), new T.MeshStandardMaterial({ color: '#ff5f5a', flatShading: true, side: T.DoubleSide })); canopy.position.set(117, 72, 50); g.add(canopy);
+  const towel = new T.Mesh(new T.BoxGeometry(62, 0.6, 30), new T.MeshStandardMaterial({ color: '#3fc2d8' })); towel.position.set(100, 0.4, 82); towel.rotation.y = 0.2; g.add(towel);
+  const ball = new T.Mesh(new T.IcosahedronGeometry(7, 1), new T.MeshStandardMaterial({ color: '#ffd23a', flatShading: true })); ball.position.set(-80, 7, 78); g.add(ball);
+  for (let i = 0; i < 8; i++) { const rock = new T.Mesh(blobGeo(rr(rnd, 4, 12), rr(rnd, 3, 7), rr(rnd, 4, 10), 1, 0.2), new T.MeshStandardMaterial({ color: '#6a5a58', flatShading: true })); rock.position.set(rr(rnd, -500, 500), 1, SHORE + rr(rnd, -10, 30)); if (Math.abs(rock.position.x) > 140) g.add(rock); }
+  const lights = [new T.HemisphereLight('#ffc4a2', '#7a5242', 0.75)];
+  const sun = new T.DirectionalLight('#ffae6a', 1.1); sun.position.set(0, 220, -1600); lights.push(sun);
+  const wp = wg.attributes.position, base = Float32Array.from(wp.array);
+  return {
+    group: g, lights, fog: new T.Fog('#f0a07c', 650, 3100), bg: '#f0a07c', cam: { theta: 6, phi: 9, dist: 165, target: [0, 20, 0] },
+    update(t) {
+      for (let i = 0; i < wp.count; i++) { const x = base[i * 3], y = base[i * 3 + 1]; wp.setZ(i, Math.sin(x * 0.018 + t * 1.1) * 1.4 + Math.cos(y * 0.025 + t * 0.8) * 1.2); }
+      wp.needsUpdate = true;
+    }
+  };
 }
 
 /* ---------- STUDIO ---------- */
@@ -1048,7 +1293,9 @@ function buildStudio() {
 const SCENES = {
   neon: { label: 'Neonowe miasto (noc)', build: buildNeonCity },
   forest: { label: 'Las we mgle', build: buildForest },
-  room: { label: 'Pokój (wnętrze)', build: buildRoom },
+  room: { label: 'Pokój (biurko, PC, łóżko)', build: buildRoom },
+  mountains: { label: 'Góry o zachodzie słońca', build: buildMountains },
+  beach: { label: 'Plaża o zachodzie słońca', build: buildBeach },
   studio: { label: 'Studio (jednolite tło)', build: buildStudio }
 };
 
@@ -1133,10 +1380,13 @@ function clearRuntimes() {
   for (const rt of RTL.values()) { rt.obj.removeFromParent(); disposeObj(rt.obj); }
   RTL.clear(); glowMats.clear();
 }
-function setAlpha(rt, alpha, mats) {
-  const tr = alpha < 0.999;
-  if (rt.tr !== tr) { rt.tr = tr; mats.forEach(m => { m.transparent = tr; m.needsUpdate = true; }); }
-  mats.forEach(m => { m.opacity = alpha; });
+function setAlpha(rt, alpha, mats) {   // baseOpacity: materiały z własną przezroczystością (szyby)
+  for (const m of mats) {
+    if (m.userData.baseOpacity === undefined) m.userData.baseOpacity = 1;
+    const base = m.userData.baseOpacity, tr = alpha < 0.999 || base < 1;
+    if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; }
+    m.opacity = base * alpha;
+  }
 }
 function layerMats(rt) {
   if (rt.mlist) return rt.mlist;
@@ -1319,7 +1569,7 @@ function moveLayer(L, mode) {
 function seatCat(cat, veh) {
   const sp = RTL.get(veh.id).veh.snaps[veh.snap] || RTL.get(veh.id).veh.snaps[0];
   const ws = Math.abs(worldScaleOf(cat)), vs = Math.abs(worldScaleOf(veh));
-  cat.parent = veh.id; cat.pos = sp.pos.toArray(); cat.rot = [0, 0, 0]; cat.flip = false; cat.scale = Math.min(ws / vs, 0.8);
+  cat.parent = veh.id; cat.pos = sp.pos.toArray(); cat.rot = [0, 0, 0]; cat.flip = false; cat.scale = sp.scale || Math.min(ws / vs, 0.8);
   state.lastCatId = cat.id; UI.rebuild(); commit();
   applyPose(cat, POSES.sit);
 }
