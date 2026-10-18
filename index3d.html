@@ -160,23 +160,23 @@ function limbGeo(a, b, r0, r1, seg = 6) {
    ===================================================================== */
 const BONE_DEFS = (() => {
   const d = [
-    ['root', null, [0, 11, -7], [0, 19, -3.5], 180],
-    ['torso', 'root', [0, 11, -7], [0, 26, 0.5], 70],
-    ['neck', 'torso', [0, 26, 0.5], [0, 30.4, 3.4], 55],
-    ['head', 'neck', [0, 30.4, 3.4], [0, 35.2, 6.4], 75],
-    ['earL', 'head', [3.4, 37.9, 5.2], [5.0, 44.2, 4.9], 70],
-    ['earR', 'head', [-3.4, 37.9, 5.2], [-4.2, 45.6, 4.7], 70],
-    ['tail1', 'root', [0, 5, -12], [-5, 3.4, -19], 85],
-    ['tail2', 'tail1', [-5, 3.4, -19], [-14, 2.6, -21.5], 90],
-    ['tail3', 'tail2', [-14, 2.6, -21.5], [-25, 5, -18], 100]
+    ['root', null, [0, 10, -5.5], [0, 18, -3], 180],
+    ['torso', 'root', [0, 10, -5.5], [0, 25.5, 0.3], 70],
+    ['neck', 'torso', [0, 25.5, 0.3], [0, 30, 1.9], 55],
+    ['head', 'neck', [0, 30, 1.9], [0, 35, 3.6], 75],
+    ['earL', 'head', [2.6, 37.9, 3.9], [3.9, 42.8, 3.6], 70],
+    ['earR', 'head', [-2.6, 37.9, 3.9], [-3.6, 43.6, 3.4], 70],
+    ['tail1', 'root', [0, 3.4, -10.6], [-4.8, 2.2, -16.4], 85],
+    ['tail2', 'tail1', [-4.8, 2.2, -16.4], [-13.5, 1.6, -19.6], 90],
+    ['tail3', 'tail2', [-13.5, 1.6, -19.6], [-24, 2.8, -18.6], 100]
   ];
   for (const [s, n] of [[1, 'L'], [-1, 'R']]) {
-    d.push([`frontLeg${n}_upper`, 'torso', [s * 3.2, 22.5, 1.5], [s * 3.2, 12.5, 3.2], 80]);
-    d.push([`frontLeg${n}_lower`, `frontLeg${n}_upper`, [s * 3.2, 12.5, 3.2], [s * 3.2, 3.2, 5.2], 110]);
-    d.push([`frontLeg${n}_paw`, `frontLeg${n}_lower`, [s * 3.2, 3.2, 5.2], [s * 3.2, 0.8, 9.2], 70]);
-    d.push([`hindLeg${n}_upper`, 'root', [s * 4.2, 11.5, -7], [s * 6.2, 4.2, -0.8], 90]);
-    d.push([`hindLeg${n}_lower`, `hindLeg${n}_upper`, [s * 6.2, 4.2, -0.8], [s * 5.4, 1.6, -6.4], 120]);
-    d.push([`hindLeg${n}_paw`, `hindLeg${n}_lower`, [s * 5.4, 1.6, -6.4], [s * 5.4, 0.7, 2.4], 70]);
+    d.push([`frontLeg${n}_upper`, 'torso', [s * 2.6, 19, 1.6], [s * 2.6, 10.5, 3.4], 80]);
+    d.push([`frontLeg${n}_lower`, `frontLeg${n}_upper`, [s * 2.6, 10.5, 3.4], [s * 2.6, 2.6, 4.4], 110]);
+    d.push([`frontLeg${n}_paw`, `frontLeg${n}_lower`, [s * 2.6, 2.6, 4.4], [s * 2.6, 0.6, 7.2], 70]);
+    d.push([`hindLeg${n}_upper`, 'root', [s * 4.2, 8.5, -6.5], [s * 5.0, 3.6, -2.4], 90]);
+    d.push([`hindLeg${n}_lower`, `hindLeg${n}_upper`, [s * 5.0, 3.6, -2.4], [s * 5.0, 1.4, -5.4], 120]);
+    d.push([`hindLeg${n}_paw`, `hindLeg${n}_lower`, [s * 5.0, 1.4, -5.4], [s * 5.0, 0.6, 3.6], 70]);
   }
   return d;
 })();
@@ -213,14 +213,63 @@ function tintCat(rig, hex, alpha) {
   rig.mats.face.color.set(mixHex(hex, '#021a0a', 0.88));
 }
 
+/* Korpus kota: jedna ciągła bryła (loft z przekrojów) skinowana do kręgosłupa.
+   Przekroje: [y, środek z, pół-szerokość x, głębokość z przodu, głębokość z tyłu] */
+const BODY_RINGS = [
+  [0.5, -4.0, 6.0, 6.2, 6.4], [3, -4.2, 7.8, 7.6, 7.2], [7, -4.4, 8.0, 7.4, 7.6], [11, -3.9, 7.2, 7.0, 6.6],
+  [15, -2.7, 6.2, 6.6, 5.4], [19, -1.5, 5.4, 6.3, 4.6], [23, -0.5, 4.6, 5.2, 4.0], [26.5, 0.6, 4.1, 4.5, 3.6],
+  [29.5, 1.8, 3.9, 4.0, 3.6], [32.5, 3.0, 4.3, 4.2, 3.9], [35, 3.6, 4.5, 4.2, 4.0], [37.3, 3.8, 3.9, 3.6, 3.5],
+  [39, 3.8, 2.6, 2.4, 2.4]
+];
+const BODY_TOP = [40.1, 3.7], BODY_SEG = 8;
+const smooth01 = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+function spineWeights(y) {   // [root, torso, neck, head] - strefy przejścia się nie nakładają, suma = 1
+  const t1 = smooth01(11, 18.5, y), t2 = smooth01(22, 26.5, y), t3 = smooth01(29, 31.2, y);
+  return [1 - t1, t1 * (1 - t2), t2 * (1 - t3), t3];
+}
+function catBodyGeo() {
+  const pos = [], skinI = [], skinW = [], idx = [], N = BODY_SEG, bi = ['root', 'torso', 'neck', 'head'].map(n => BONE_NAMES.indexOf(n));
+  const pushV = (x, y, z) => { pos.push(x, y, z); const w = spineWeights(y); skinI.push(...bi); skinW.push(...w); return pos.length / 3 - 1; };
+  BODY_RINGS.forEach(([y, zc, rx, rzF, rzB], r) => {
+    for (let k = 0; k < N; k++) {
+      const th = k / N * Math.PI * 2, s = Math.sin(th), c = Math.cos(th), j = (hash3(r, k, 7) - 0.5) * 0.45;
+      pushV(s * (rx + j), y + (hash3(k, r, 3) - 0.5) * 0.5, zc + c * ((c >= 0 ? rzF : rzB) + j));
+    }
+  });
+  const bottom = pushV(0, 0.1, -4.0), top = pushV(0, BODY_TOP[0], BODY_TOP[1]), R = BODY_RINGS.length;
+  for (let r = 0; r < R - 1; r++) for (let k = 0; k < N; k++) {
+    const a0 = r * N + k, a1 = r * N + (k + 1) % N, b0 = a0 + N, b1 = a1 + N;
+    idx.push(a0, a1, b0, a1, b1, b0);
+  }
+  for (let k = 0; k < N; k++) { idx.push(bottom, k, (k + 1) % N); idx.push(top, (R - 1) * N + (k + 1) % N, (R - 1) * N + k); }
+  const g = new T.BufferGeometry();
+  g.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
+  g.setAttribute('skinIndex', new T.Uint16BufferAttribute(skinI, 4));
+  g.setAttribute('skinWeight', new T.Float32BufferAttribute(skinW, 4));
+  g.setIndex(idx); g.computeVertexNormals(); g.computeBoundingBox();
+  return g;
+}
+function meshWorldBox(m) {
+  if (m.isSkinnedMesh) { m.computeBoundingBox(); return m.boundingBox.clone().applyMatrix4(m.matrixWorld); }
+  if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+  return m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld);
+}
+
 function buildCatRig() {
   const mats = makeCatMaterials(), group = new T.Group(), bones = {}, meshes = [];
   for (const b of BONE_LIST) {
-    const g = new T.Group(); g.name = b.name;
+    const g = new T.Bone(); g.name = b.name;
     g.position.copy(b.joint).sub(b.parent ? BONES[b.parent].joint : V3(0, 0, 0));
     bones[b.name] = g; (b.parent ? bones[b.parent] : group).add(g);
   }
-  // dodaje bryłę (z twinem prepassu) do kości; pos w układzie świata spoczynkowego
+  // korpus: SkinnedMesh + twin prepassu (ta sama geometria i szkielet)
+  const skeleton = new T.Skeleton(BONE_LIST.map(b => bones[b.name])), bodyGeo = catBodyGeo();
+  const body = new T.SkinnedMesh(bodyGeo, mats.body), bodyPre = new T.SkinnedMesh(bodyGeo, mats.pre);
+  body.userData.role = 'cat'; body.renderOrder = 3; bodyPre.userData.role = 'prepass'; bodyPre.renderOrder = 1;
+  for (const m of [body, bodyPre]) { m.frustumCulled = false; group.add(m); meshes.push(m); }
+  group.updateMatrixWorld(true); body.bind(skeleton); bodyPre.bind(skeleton);
+
+  // sztywna bryła (z twinem prepassu) na kości; pos w układzie świata spoczynkowego
   function part(bone, geo, pos, quat, kind = 'body') {
     const rel = pos.clone().sub(BONES[bone].joint), mat = kind === 'face' ? mats.face : kind === 'inner' ? mats.inner : mats.body;
     const m = new T.Mesh(geo, mat); m.position.copy(rel); if (quat) m.quaternion.copy(quat);
@@ -232,47 +281,37 @@ function buildCatRig() {
     }
     return m;
   }
-  const blob = (bone, c, r, d = 2, jit = 0.07, quat) => part(bone, blobGeo(r[0], r[1], r[2], d, jit), V3(...c), quat);
+  const blob = (bone, c, r, d = 1, jit = 0.07, quat) => part(bone, blobGeo(r[0], r[1], r[2], d, jit), V3(...c), quat);
   const limb = (bone, a, b, r0, r1, seg = 6) => { const l = limbGeo(V3(...a), V3(...b), r0, r1, seg); return part(bone, l.geo, l.pos, l.quat); };
   const alignQ = (from, to) => new T.Quaternion().setFromUnitVectors(V3(...from).normalize(), V3(...to).normalize());
 
-  // tułów: "dzwon" z kilku dużych płaskich ścian (szeroka podstawa, brak widocznej szyi)
-  blob('root', [0, 10.2, -7.4], [6.0, 6.4, 7.0], 1, 0.1);
-  blob('torso', [0, 18.0, -3.2], [5.5, 9.6, 5.9], 1, 0.09);
-  blob('torso', [0, 24.4, 0.4], [4.7, 5.3, 4.7], 1, 0.08);
-  blob('neck', [0, 28.2, 2.4], [3.7, 3.4, 3.5], 1, 0.06);
-  // głowa: mała, z wysuniętym pyszczkiem
-  blob('head', [0, 35.2, 6.3], [4.9, 4.2, 4.4], 1, 0.07);
-  blob('head', [2.3, 34.0, 7.9], [2.3, 1.9, 2.2], 1, 0.05);
-  blob('head', [-2.3, 34.0, 7.9], [2.3, 1.9, 2.2], 1, 0.05);
-  blob('head', [0, 33.2, 9.5], [1.9, 1.5, 2.4], 1, 0.04);
-  for (const s of [1, -1]) part('head', blobGeo(0.6, 0.85, 0.35, 1, 0.02), V3(s * 2.4, 35.9, 10.1), alignQ([0, 0, 1], [s * 0.3, 0, 1]), 'face');
-  part('head', blobGeo(0.55, 0.4, 0.35, 1, 0.02), V3(0, 34.0, 11.7), null, 'face');
-  // pysk: małe, lekko zaokrąglone odwrócone V (∧)
-  const mouth = new T.CatmullRomCurve3([V3(-1.25, 32.4, 10.95), V3(-0.6, 32.9, 11.5), V3(0, 33.1, 11.8), V3(0.6, 32.9, 11.5), V3(1.25, 32.4, 10.95)], false, 'catmullrom', 0.5);
-  part('head', new T.TubeGeometry(mouth, 16, 0.14, 5, false), V3(0, 0, 0), null, 'face');
-  // uszy: małe, spiczaste
+  // pyszczek + twarz (dwoje oczu, nosek, zaokrąglone odwrócone V)
+  blob('head', [0, 33.4, 7.0], [2.0, 1.5, 1.9], 1, 0.04);
+  for (const s of [1, -1]) part('head', blobGeo(0.68, 0.88, 0.32, 1, 0.02), V3(s * 1.95, 35.3, 7.35), alignQ([0, 0, 1], [s * 0.38, 0.05, 1]), 'face');
+  part('head', blobGeo(0.5, 0.36, 0.3, 1, 0.02), V3(0, 34.15, 8.75), null, 'face');
+  const mouth = new T.CatmullRomCurve3([V3(-1.1, 32.45, 8.1), V3(-0.55, 32.85, 8.65), V3(0, 33.05, 8.95), V3(0.55, 32.85, 8.65), V3(1.1, 32.45, 8.1)], false, 'catmullrom', 0.5);
+  part('head', new T.TubeGeometry(mouth, 16, 0.13, 5, false), V3(0, 0, 0), null, 'face');
+  // uszy: małe, spiczaste, trójkątne
   for (const [n, s] of [['earL', 1], ['earR', -1]]) {
-    const b = BONES[n], dir = b.dir0, h = b.len * 0.9, q = alignQ([0, 1, 0], [dir.x, dir.y, dir.z]);
-    const out = new T.ConeGeometry(2.3, h, 3, 1); out.translate(0, h / 2, 0); out.scale(1, 1, 0.45);
-    part(n, out, b.joint.clone(), q);
-    const inn = new T.ConeGeometry(1.35, h * 0.7, 3, 1); inn.translate(0, h * 0.35, 0); inn.scale(1, 1, 0.4);
-    part(n, inn, b.joint.clone().add(V3(s * -0.05, 0.1, 0.3)), q, 'inner');
+    const b = BONES[n], dir = b.dir0, h = b.len, q = alignQ([0, 1, 0], [dir.x, dir.y, dir.z]);
+    const out = new T.ConeGeometry(1.95, h, 3, 1); out.translate(0, h / 2, 0); out.scale(1, 1, 0.5);
+    part(n, out, b.joint.clone().add(V3(0, -0.4, 0)), q);
+    const inn = new T.ConeGeometry(1.1, h * 0.68, 3, 1); inn.translate(0, h * 0.34, 0); inn.scale(1, 1, 0.4);
+    part(n, inn, b.joint.clone().add(V3(s * -0.05, -0.2, 0.32)), q, 'inner');
   }
-  // przednie łapy
+  // przednie łapy: wtopione w pierś, smukłe kolumny + małe stopy
   for (const [s, n] of [[1, 'L'], [-1, 'R']]) {
-    limb(`frontLeg${n}_upper`, [s * 3.2, 22.5, 1.5], [s * 3.2, 12.5, 3.2], 2.0, 1.55);
-    blob(`frontLeg${n}_upper`, [s * 3.2, 12.5, 3.2], [1.6, 1.6, 1.6], 1, 0.05);
-    limb(`frontLeg${n}_lower`, [s * 3.2, 12.5, 3.2], [s * 3.2, 3.4, 5.2], 1.5, 1.15);
-    blob(`frontLeg${n}_paw`, [s * 3.2, 1.4, 7], [1.65, 1.25, 3.1], 1, 0.06);
-    // tylne łapy: udo + goleń + stopa
-    blob(`hindLeg${n}_upper`, [s * 5.0, 8.2, -4.6], [3.0, 5.2, 4.5], 1, 0.09, alignQ([0, 1, 0], [s * 0.15, 0.25, 0.9]));
-    limb(`hindLeg${n}_lower`, [s * 6.2, 4.2, -0.8], [s * 5.4, 1.8, -6.4], 1.25, 0.95);
-    blob(`hindLeg${n}_lower`, [s * 5.4, 1.8, -6.4], [1.15, 1.1, 1.15], 1, 0.05);
-    blob(`hindLeg${n}_paw`, [s * 5.4, 0.9, -1.2], [1.5, 1.0, 3.4], 1, 0.06);
+    limb(`frontLeg${n}_upper`, [s * 2.6, 19, 1.6], [s * 2.6, 10.5, 3.4], 2.4, 1.6);
+    blob(`frontLeg${n}_upper`, [s * 2.6, 10.5, 3.4], [1.5, 1.5, 1.5], 1, 0.04);
+    limb(`frontLeg${n}_lower`, [s * 2.6, 10.5, 3.4], [s * 2.6, 2.6, 4.4], 1.45, 1.2);
+    blob(`frontLeg${n}_paw`, [s * 2.6, 1.1, 5.6], [1.5, 1.05, 2.3], 1, 0.06);
+    // tylne łapy: udo (w spoczynku schowane w zadzie), goleń, mała "klockowata" stopa z przodu
+    limb(`hindLeg${n}_upper`, [s * 4.2, 8.5, -6.5], [s * 5.0, 3.6, -2.4], 1.5, 1.15);
+    limb(`hindLeg${n}_lower`, [s * 5.0, 3.6, -2.4], [s * 5.0, 1.5, -5.4], 1.05, 0.85);
+    blob(`hindLeg${n}_paw`, [s * 5.0, 0.9, 1.4], [1.35, 0.95, 2.5], 1, 0.06);
   }
-  // ogon
-  const tailR = [[1.15, 0.95], [0.95, 0.8], [0.8, 0.6]];
+  // ogon: cienki i długi
+  const tailR = [[1.3, 1.05], [1.05, 0.85], [0.85, 0.5]];
   ['tail1', 'tail2', 'tail3'].forEach((n, i) => {
     const b = BONES[n];
     limb(n, b.joint.toArray(), b.tip.toArray(), tailR[i][0], tailR[i][1], 6);
@@ -432,9 +471,9 @@ const POSE_SPECS = {
   })(),
   lookUp: (() => {
     const Y = 35, F = fwd(Y), s = { root: { r: [0, Y, 0] } };
-    s.torso = { d: [F[0] * 0.3, 1, 0.2] }; s.neck = { d: [F[0] * 0.1, 1, 0.1] }; s.head = { abs: [-24, -25, 8] };
+    s.torso = { d: [F[0] * 0.12, 1, F[2] * 0.12] }; s.neck = { d: [F[0] * 0.5, 1, F[2] * 0.5] }; s.head = { abs: [-30, -25, 8] };
     s.earL = { e: [0, 0, -4] }; s.earR = { e: [0, 0, 12] };
-    legs(s, Y, [0.05, 0.05, 0.9], [-1, -1, -0.4]);
+    legs(s, Y, [0.1, 0.06, 0.9], [-1, -1, -0.4]);
     s.tail1 = { d: [1, -0.05, -0.3] }; s.tail2 = { d: [1, 0.05, -0.12] }; s.tail3 = { d: [1, 0.25, 0.08] };
     return s;
   })(),
@@ -564,7 +603,8 @@ function renderPipeline(w, h, viewZoom, toScreen) {
    AKCESORIA 3D (przypięte do kości; współrzędne w układzie głowy / szyi)
    ===================================================================== */
 const stdMat = (color, o = {}) => new T.MeshStandardMaterial(Object.assign({ color, roughness: 0.55, metalness: 0.05, flatShading: true }, o));
-const HEAD_CENTER = V3(0, 35.2, 6.3), NECK_CENTER = V3(0, 28.4, 2.2);
+const HEAD_CENTER = V3(0, 35.2, 3.8), NECK_CENTER = V3(0, 27.6, 1.2);
+const ACC_HEAD_K = 0.68, ACC_NECK_K = 0.82;   // akcesoria projektowane dla głowy o promieniu ~6.5
 
 function mesh(geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) {
   const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); return m;
@@ -1109,8 +1149,9 @@ function syncLayer(L) {
   const o = rt.obj, r = L.rot.map(v => v * D2R), sx = L.flip ? -L.scale : L.scale;
   if (L.type === 'acc') {
     const d = ACC_DEFS[L.kind];
-    o.position.copy(d.anchor).sub(BONES[d.host].joint).add(V3(...L.off));
-    o.rotation.set(r[0], r[1], r[2]); o.scale.set(sx, L.scale, L.scale);
+    const k = d.host === 'neck' ? ACC_NECK_K : ACC_HEAD_K;
+    o.position.copy(d.anchor).sub(BONES[d.host].joint).add(V3(...L.off).multiplyScalar(k));
+    o.rotation.set(r[0], r[1], r[2]); o.scale.set(sx * k, L.scale * k, L.scale * k);
     rt.acc.userData.mat.color.set(L.color); o.visible = L.visible; setAlpha(rt, L.alpha, layerMats(rt));
   } else {
     const parent = L.parent != null && RTL.get(L.parent) ? RTL.get(L.parent).obj : layerGroup;
@@ -1374,8 +1415,7 @@ function layerBox(L) {
   _box.makeEmpty(); rt.obj.updateWorldMatrix(true, true);
   rt.obj.traverse(m => {
     if (!m.isMesh || m.userData.layerId !== L.id || m.userData.role === 'skip' || m.userData.role === 'prepass') return;
-    if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
-    _tmp.copy(m.geometry.boundingBox).applyMatrix4(m.matrixWorld); _box.union(_tmp);
+    _box.union(meshWorldBox(m));
   });
   return _box.isEmpty() ? null : _box.clone();
 }
@@ -1711,7 +1751,7 @@ function poseThumb(pose) {
     thumb = { sc, cam: cam3, rig, cv: document.createElement('canvas') }; thumb.cv.width = thumb.cv.height = 112;
   }
   applyPoseToRig(thumb.rig, normalizePose(pose));
-  const b = new T.Box3(); thumb.rig.meshes.forEach(m => { if (m.userData.role === 'cat') { if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); b.union(m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld)); } });
+  const b = new T.Box3(); thumb.rig.group.updateMatrixWorld(true); thumb.rig.meshes.forEach(m => { if (m.userData.role === 'cat') b.union(meshWorldBox(m)); });
   const c = b.getCenter(new T.Vector3()), sz = b.getSize(new T.Vector3()), d = Math.max(sz.x, sz.y, sz.z) / (2 * Math.tan(13 * D2R)) * 1.18;
   thumb.cam.position.set(c.x + d * 0.26, c.y + d * 0.22, c.z + d * 0.94); thumb.cam.lookAt(c);
   renderer.setRenderTarget(null); renderer.setSize(112, 112, false); renderer.outputColorSpace = T.SRGBColorSpace;
