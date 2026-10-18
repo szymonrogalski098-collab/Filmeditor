@@ -1,0 +1,1933 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>PFP Studio - świecący kot low-poly</title>
+<style>
+:root{
+  --bg:#080c0a; --panel:#0f1511; --panel2:#141c17; --line:#1e2b23; --text:#d6eedd; --dim:#7f9a88;
+  --accent:#00ff40; --accent2:#00c832; --danger:#ff5a5a; --r:8px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:13px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100%}
+#top{display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap;min-height:46px}
+.brand{font-weight:700;letter-spacing:.04em;color:var(--accent);display:flex;align-items:center;gap:8px;margin-right:6px}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent),0 0 22px var(--accent)}
+.grp{display:flex;align-items:center;gap:6px}
+.grp.right{margin-left:auto}
+button,select,input[type=text]{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:var(--r);padding:6px 10px}
+button{cursor:pointer;transition:background .12s,border-color .12s,box-shadow .12s}
+button:hover:not(:disabled){border-color:var(--accent2);background:#18241d}
+button:active:not(:disabled){background:#1d2d24}
+button:disabled{opacity:.4;cursor:default}
+button.accent{background:var(--accent);color:#03130a;border-color:var(--accent);font-weight:700}
+button.accent:hover:not(:disabled){background:#4dff74;box-shadow:0 0 14px rgba(0,255,64,.5)}
+button.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);color:var(--accent)}
+button.danger:hover:not(:disabled){border-color:var(--danger);color:var(--danger)}
+button.sm{padding:3px 7px;font-size:12px}
+#zoomLbl{min-width:46px;text-align:center;color:var(--dim)}
+#main{flex:1;display:flex;min-height:0}
+#viewport{flex:1;position:relative;min-width:0;background:#050806;overflow:hidden}
+#cv{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block;outline:none}
+#hint{position:absolute;left:10px;bottom:8px;color:var(--dim);font-size:11px;pointer-events:none;text-shadow:0 1px 2px #000}
+#toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:#0f1f15;border:1px solid var(--accent2);color:var(--text);padding:7px 14px;border-radius:20px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:80%;text-align:center}
+#toast.show{opacity:1}
+#panel{width:350px;max-width:100%;overflow-y:auto;background:var(--panel);border-left:1px solid var(--line)}
+details{border-bottom:1px solid var(--line)}
+summary{cursor:pointer;padding:10px 12px;font-weight:600;color:var(--accent);list-style:none;user-select:none;display:flex;align-items:center;gap:8px}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"";width:6px;height:6px;border-right:2px solid var(--accent);border-bottom:2px solid var(--accent);transform:rotate(-45deg);transition:transform .15s}
+details[open]>summary::before{transform:rotate(45deg)}
+.body{padding:4px 12px 14px;display:flex;flex-direction:column;gap:8px}
+.row{display:flex;align-items:center;gap:8px;min-height:26px}
+.row .lbl{flex:0 0 112px;color:var(--dim)}
+.row input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+.row input[type=color]{width:46px;height:26px;padding:0;border:1px solid var(--line);border-radius:6px;background:none}
+.row select,.row input[type=text]{flex:1;min-width:0}
+.row .val{flex:0 0 44px;text-align:right;color:var(--dim);font-variant-numeric:tabular-nums}
+.row input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px}
+.btns{display:flex;flex-wrap:wrap;gap:6px}
+.sub{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
+.note{color:var(--dim);font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.grid.g3{grid-template-columns:repeat(3,1fr)}
+.pose{padding:4px 2px 5px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px}
+.pose canvas{width:56px;height:56px;border-radius:6px;background:#0a110d}
+.layer{display:flex;align-items:center;gap:6px;padding:4px 6px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel2);cursor:pointer}
+.layer.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.layer .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.layer .tg{font-size:10px;color:var(--dim);text-transform:uppercase}
+.layer.child{margin-left:16px}
+.saved{display:flex;align-items:center;gap:6px;padding:3px 6px;border:1px solid var(--line);border-radius:var(--r);cursor:pointer}
+.saved .nm{flex:1}
+.dims{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:600}
+@media (max-width:820px){
+  #main{flex-direction:column}
+  #panel{width:100%;height:44vh;border-left:0;border-top:1px solid var(--line)}
+  #hint{display:none}
+  .brand{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <div class="brand"><span class="dot"></span>PFP STUDIO</div>
+    <div class="grp">
+      <button id="bUndo" title="Cofnij (Ctrl+Z)">Cofnij</button>
+      <button id="bRedo" title="Ponów (Ctrl+Shift+Z)">Ponów</button>
+    </div>
+    <div class="grp">
+      <button id="bZoomOut" title="Oddal">-</button>
+      <span id="zoomLbl">100%</span>
+      <button id="bZoomIn" title="Przybliż">+</button>
+      <button id="bFit" title="Dopasuj widok do obszaru eksportu (0)">Dopasuj</button>
+    </div>
+    <div class="grp right">
+      <button id="bNew">Nowa scena</button>
+      <button id="bArea">Wybierz obszar</button>
+      <button id="bExportTop" class="accent">Eksportuj PNG</button>
+    </div>
+  </header>
+  <div id="main">
+    <div id="viewport">
+      <canvas id="cv" tabindex="0"></canvas>
+      <div id="toast"></div>
+      <div id="hint">Kółko: zoom &middot; Spacja/środkowy przycisk + przeciąganie: przesuń &middot; Delete: usuń &middot; Ctrl+D: duplikuj</div>
+    </div>
+    <aside id="panel"></aside>
+  </div>
+</div>
+<script>
+'use strict';
+(() => {
+
+/* =====================================================================
+   UTIL / MATRIX / COLOR
+   ===================================================================== */
+const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeInOut = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const clone = o => JSON.parse(JSON.stringify(o));
+const $ = id => document.getElementById(id);
+
+function makeRng(seed) {
+  let s = (seed | 0) || 1;
+  return () => { s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return ((s >>> 0) % 1000003) / 1000003; };
+}
+
+// macierz afiniczna [a,b,c,d,e,f] (konwencja Canvas): x' = a x + c y + e
+const MI = [1, 0, 0, 1, 0, 0];
+const mMul = (m, n) => [
+  m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1],
+  m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3],
+  m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
+const mDet = m => m[0] * m[3] - m[1] * m[2];
+function mInv(m) {
+  const d = mDet(m), a = m[3] / d, b = -m[1] / d, c = -m[2] / d, e = m[0] / d;
+  return [a, b, c, e, -(a * m[4] + c * m[5]), -(b * m[4] + e * m[5])];
+}
+const mPt = (m, x, y) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
+const mT = (x, y) => [1, 0, 0, 1, x, y];
+const mR = a => { const c = Math.cos(a), s = Math.sin(a); return [c, s, -s, c, 0, 0]; };
+const mS = (sx, sy = sx) => [sx, 0, 0, sy, 0, 0];
+const mScaleOf = m => Math.hypot(m[0], m[1]);
+
+function hex2rgb(h) {
+  h = String(h).replace('#', '');
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  const n = parseInt(h, 16) || 0;
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+const mixRgb = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
+const rgbCss = (c, a) => a === undefined || a >= 1
+  ? `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})` : `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+const hexAlpha = (hex, a) => rgbCss(hex2rgb(hex), a);
+
+// flat shading: s w [-1,1] -> jaśniej / ciemniej względem koloru bazowego
+const shadeCache = new Map();
+function shadeCss(rgb, s) {
+  const q = Math.round(clamp(s, -1, 1) * 24);
+  const key = (rgb[0] | 0) + ',' + (rgb[1] | 0) + ',' + (rgb[2] | 0) + ',' + q;
+  let v = shadeCache.get(key);
+  if (!v) {
+    const t = q / 24;
+    const c = t >= 0 ? mixRgb(rgb, [255, 255, 255], t * 0.34) : mixRgb(rgb, [rgb[0] * 0.3, rgb[1] * 0.42, rgb[2] * 0.36], -t * 0.9);
+    v = rgbCss(c);
+    if (shadeCache.size > 4000) shadeCache.clear();
+    shadeCache.set(key, v);
+  }
+  return v;
+}
+
+/* =====================================================================
+   SHAPES: generator low-poly (wielokąt -> trójkąty z flat shadingiem)
+   ===================================================================== */
+const LIGHT = (() => { const v = [-0.45, -0.62, 0.64], l = Math.hypot(...v); return v.map(x => x / l); })();
+
+function centroidOf(pts) {
+  let x = 0, y = 0; const n = pts.length / 2;
+  for (let i = 0; i < pts.length; i += 2) { x += pts[i]; y += pts[i + 1]; }
+  return [x / n, y / n];
+}
+
+function triShade(tri, c, R, rnd) {
+  const gx = (tri[0] + tri[2] + tri[4]) / 3, gy = (tri[1] + tri[3] + tri[5]) / 3;
+  let nx = (gx - c[0]) / R, ny = (gy - c[1]) / R;
+  const r2 = Math.min(1, nx * nx + ny * ny), nz = Math.sqrt(1 - r2 * 0.75);
+  const len = Math.hypot(nx, ny, nz) || 1;
+  const d = (nx * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2]) / len;
+  return clamp((d - 0.52) * 1.7 + (rnd() - 0.5) * 0.2, -1, 1);
+}
+
+// detail: 1 = wachlarz od środka, 2 = pierścień wewnętrzny + wachlarz
+function lowpoly(outline, opt = {}) {
+  const n = outline.length / 2, rnd = makeRng((opt.seed || 1) * 977 + n);
+  const c = centroidOf(outline);
+  let R = 1;
+  for (let i = 0; i < n; i++) R = Math.max(R, Math.hypot(outline[2 * i] - c[0], outline[2 * i + 1] - c[1]));
+  const detail = opt.detail || (n >= 6 ? 2 : 1);
+  const faces = [];
+  const push = (a, b, d) => { const t = [a[0], a[1], b[0], b[1], d[0], d[1]]; faces.push({ p: t, s: triShade(t, c, R, rnd) }); };
+  const O = i => [outline[2 * (i % n)], outline[2 * (i % n) + 1]];
+  if (detail === 1) {
+    for (let i = 0; i < n; i++) push(O(i), O(i + 1), c);
+    return faces;
+  }
+  const k = opt.ring ?? 0.5, inner = [];
+  for (let i = 0; i < n; i++) {
+    const o = O(i), j = (rnd() - 0.5) * 0.28 * R * k;
+    inner.push([lerp(c[0], o[0], k) + j, lerp(c[1], o[1], k) + (rnd() - 0.5) * 0.28 * R * k]);
+  }
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    push(O(i), O(j), inner[j]);
+    push(O(i), inner[j], inner[i]);
+    push(inner[i], inner[j], c);
+  }
+  return faces;
+}
+
+// pas czworokątów pomiędzy dwiema krawędziami (opaski, szaliki)
+function stripFaces(top, bot) {
+  const n = top.length / 2, faces = [], rnd = makeRng(top.length * 31 + 7);
+  for (let i = 0; i < n - 1; i++) {
+    const a = [top[2 * i], top[2 * i + 1]], b = [top[2 * i + 2], top[2 * i + 3]];
+    const c = [bot[2 * i + 2], bot[2 * i + 3]], d = [bot[2 * i], bot[2 * i + 1]];
+    const base = 0.35 - 0.7 * (i / Math.max(1, n - 2));
+    faces.push({ p: [a[0], a[1], b[0], b[1], c[0], c[1]], s: base + (rnd() - 0.5) * 0.25 });
+    faces.push({ p: [a[0], a[1], c[0], c[1], d[0], d[1]], s: base - 0.12 + (rnd() - 0.5) * 0.25 });
+  }
+  return faces;
+}
+
+function limb(j, t, w0, w1) {
+  const dx = t[0] - j[0], dy = t[1] - j[1], len = Math.hypot(dx, dy) || 1;
+  const d = [dx / len, dy / len], nrm = [-d[1], d[0]], wm = (w0 + w1) / 2 * 1.06;
+  const m = [(j[0] + t[0]) / 2, (j[1] + t[1]) / 2];
+  const P = (b, u, w) => [b[0] + nrm[0] * w * u, b[1] + nrm[1] * w * u];
+  const pts = [P(j, 1, w0), P(m, 1, wm), P(t, 1, w1),
+    [t[0] + d[0] * w1 * 0.95, t[1] + d[1] * w1 * 0.95],
+    P(t, -1, w1), P(m, -1, wm), P(j, -1, w0),
+    [j[0] - d[0] * w0 * 0.95, j[1] - d[1] * w0 * 0.95]];
+  return pts.flat();
+}
+function ellipse(cx, cy, rx, ry, n = 12, rot = 0) {
+  const out = [], cr = Math.cos(rot), sr = Math.sin(rot);
+  for (let i = 0; i < n; i++) {
+    const a = i / n * Math.PI * 2, x = Math.cos(a) * rx, y = Math.sin(a) * ry;
+    out.push(cx + x * cr - y * sr, cy + x * sr + y * cr);
+  }
+  return out;
+}
+const circ = (cx, cy, r, n = 12) => ellipse(cx, cy, r, r, n);
+const flipX = (pts, cx2 = 0) => { const o = pts.slice(); for (let i = 0; i < o.length; i += 2) o[i] = cx2 - o[i]; return o; };
+
+/* Zestawy kształtów (pojazdy, akcesoria): definicje -> elementy do rysowania */
+function buildItems(defs) {
+  const items = []; let seed = 1;
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  const grow = (pts, pad = 0) => {
+    for (let i = 0; i < pts.length; i += 2) {
+      x0 = Math.min(x0, pts[i] - pad); x1 = Math.max(x1, pts[i] + pad);
+      y0 = Math.min(y0, pts[i + 1] - pad); y1 = Math.max(y1, pts[i + 1] + pad);
+    }
+  };
+  for (const d of defs) {
+    if (d.t === 'poly') {
+      items.push({ tone: d.tone || 'body', faces: lowpoly(d.pts, { detail: d.detail, seed: seed++ }) });
+      grow(d.pts);
+    } else if (d.t === 'strip') {
+      items.push({ tone: d.tone || 'body', faces: stripFaces(d.top, d.bot) });
+      grow(d.top); grow(d.bot);
+    } else if (d.t === 'line') {
+      items.push({ tone: d.tone || 'dark', line: d.pts, w: d.w || 3, closed: !!d.closed, fillTone: d.fillTone, fillAlpha: d.fillAlpha });
+      grow(d.pts, (d.w || 3) / 2);
+    }
+  }
+  return { items, bounds: [x0, y0, x1, y1] };
+}
+
+function makePalette(hex) {
+  const c = hex2rgb(hex);
+  return {
+    body: c, shade: mixRgb(c, [0, 0, 0], 0.42), light: mixRgb(c, [255, 255, 255], 0.5),
+    inner: mixRgb(c, [10, 80, 40], 0.5), face: mixRgb(c, [0, 38, 14], 0.9),
+    dark: [22, 26, 28], glassD: [22, 52, 62], glass: [150, 215, 230], metal: [156, 166, 172],
+    lamp: [255, 245, 170], red: [255, 70, 70], gold: [255, 210, 74]
+  };
+}
+
+function drawFaces(ctx, faces, rgb, lw) {
+  ctx.lineJoin = 'round'; ctx.lineWidth = lw;
+  for (const f of faces) {
+    const col = shadeCss(rgb, f.s), p = f.p;
+    ctx.fillStyle = col; ctx.strokeStyle = col;
+    ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(p[2], p[3]); ctx.lineTo(p[4], p[5]); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+  }
+}
+function tracePts(ctx, pts, closed) {
+  ctx.beginPath(); ctx.moveTo(pts[0], pts[1]);
+  for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+  if (closed) ctx.closePath();
+}
+function drawItem(ctx, item, pal) {
+  const t = ctx.getTransform(), px = 1 / (Math.hypot(t.a, t.b) || 1);
+  if (item.faces) { drawFaces(ctx, item.faces, pal[item.tone] || pal.body, 0.9 * px); return; }
+  if (item.fillTone) {
+    tracePts(ctx, item.line, true);
+    ctx.fillStyle = rgbCss(pal[item.fillTone], item.fillAlpha ?? 1); ctx.fill();
+  }
+  tracePts(ctx, item.line, item.closed);
+  ctx.strokeStyle = rgbCss(pal[item.tone] || pal.dark); ctx.lineWidth = item.w;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+}
+
+/* =====================================================================
+   RIG: kości, FK, wielokąty kota
+   ===================================================================== */
+const HM = mMul(mT(-8, -298), mR(-0.13));          // układ głowy (lekko przechylona)
+const H = (x, y) => mPt(HM, x, y);
+const Hs = arr => { const o = []; for (let i = 0; i < arr.length; i += 2) o.push(...H(arr[i], arr[i + 1])); return o; };
+const mirrorPt = p => [10 - p[0], p[1]];
+
+// [nazwa, rodzic, staw (poza spoczynkowa), koniec, limit min, limit max]
+const BONE_DEFS = (() => {
+  const d = [
+    ['root', null, [10, -100], [10, -112], -180, 180],
+    ['torso', 'root', [10, -100], [-5, -228], -70, 70],
+    ['neck', 'torso', [-5, -226], [-8, -262], -45, 45],
+    ['head', 'neck', [-8, -262], [-8, -298], -60, 60],
+    ['earL', 'head', H(-36, -34), H(-52, -84), -45, 45],
+    ['earR', 'head', H(36, -36), H(54, -102), -45, 45],
+    ['tail1', 'root', [-46, -48], [-112, -52], -130, 130],
+    ['tail2', 'tail1', [-112, -52], [-158, -20], -120, 120],
+    ['tail3', 'tail2', [-158, -20], [-132, 10], -120, 120]
+  ];
+  for (const s of ['L', 'R']) {
+    const M = s === 'R' ? mirrorPt : (p => p);
+    d.push([`frontLeg${s}_upper`, 'torso', M([-32, -196]), M([-32, -126]), -110, 110]);
+    d.push([`frontLeg${s}_lower`, `frontLeg${s}_upper`, M([-32, -126]), M([-32, -48]), -135, 135]);
+    d.push([`frontLeg${s}_paw`, `frontLeg${s}_lower`, M([-32, -48]), M([-30, -2]), -80, 80]);
+    d.push([`hindLeg${s}_upper`, 'root', M([-55, -110]), M([-84, -48]), -120, 120]);
+    d.push([`hindLeg${s}_lower`, `hindLeg${s}_upper`, M([-84, -48]), M([-62, -14]), -135, 135]);
+    d.push([`hindLeg${s}_paw`, `hindLeg${s}_lower`, M([-62, -14]), M([-28, -6]), -80, 80]);
+  }
+  return d;
+})();
+
+const BONE = {}, BONE_LIST = [];
+for (const [name, parent, j, t, lo, hi] of BONE_DEFS) {
+  const ra = Math.atan2(t[1] - j[1], t[0] - j[0]);
+  const rest = mMul(mT(j[0], j[1]), mR(ra));
+  const b = { name, parent, j, t, lo, hi, ra, len: Math.hypot(t[0] - j[0], t[1] - j[1]), rest, restInv: mInv(rest) };
+  b.L = parent ? mMul(BONE[parent].restInv, rest) : rest;
+  BONE[name] = b; BONE_LIST.push(b);
+}
+const BONE_NAMES = BONE_LIST.map(b => b.name);
+
+const IK_CHAINS = {
+  frontLegL_paw: ['frontLegL_upper', 'frontLegL_lower', 'frontLegL_paw'],
+  frontLegR_paw: ['frontLegR_upper', 'frontLegR_lower', 'frontLegR_paw'],
+  hindLegL_paw: ['hindLegL_upper', 'hindLegL_lower', 'hindLegL_paw'],
+  hindLegR_paw: ['hindLegR_upper', 'hindLegR_lower', 'hindLegR_paw'],
+  tail3: ['tail1', 'tail2', 'tail3']
+};
+
+// wielokąty w układzie spoczynkowym kota, kolejność = z-order
+const CAT_PARTS = (() => {
+  const parts = []; let n = 0;
+  const add = (bone, pts, tone, detail) => parts.push({ bone, pts, tone: tone || 'body', detail, seed: ++n });
+  const addLine = (bone, pts, w, tone) => parts.push({ bone, line: pts, w, tone: tone || 'face' });
+  const mp = pts => { const o = []; for (let i = 0; i < pts.length; i += 2) o.push(10 - pts[i], pts[i + 1]); return o; };
+  // tylne łapy
+  const haunch = [-38, -132, -72, -124, -100, -96, -106, -62, -90, -34, -56, -26, -30, -44, -24, -84];
+  const hshin = limb([-86, -52], [-62, -12], 15, 11), hpaw = [-76, -20, -44, -23, -24, -10, -21, 2, -68, 3, -82, -8];
+  for (const s of ['L', 'R']) {
+    const f = s === 'R' ? mp : (p => p);
+    add(`hindLeg${s}_upper`, f(haunch), 'body', 2);
+    add(`hindLeg${s}_lower`, f(hshin), 'body', 1);
+    add(`hindLeg${s}_paw`, f(hpaw), 'body', 1);
+  }
+  // ogon
+  add('tail1', limb([-40, -48], [-114, -52], 15, 13), 'body', 1);
+  add('tail2', limb([-110, -52], [-160, -20], 13, 11), 'body', 1);
+  add('tail3', limb([-154, -24], [-132, 12], 11, 6), 'body', 1);
+  // tułów + szyja
+  add('torso', [-48, -236, -10, -248, 30, -238, 52, -198, 66, -142, 72, -96, 34, -66, -22, -66, -62, -98, -66, -150, -60, -202], 'body', 2);
+  add('neck', [-30, -226, 14, -230, 14, -266, -30, -268], 'body', 1);
+  // przednie łapy
+  const fup = limb([-32, -198], [-32, -120], 21, 15), flow = limb([-32, -130], [-32, -44], 15, 12);
+  const fpaw = [-48, -54, -16, -54, -8, -20, -14, 3, -40, 5, -54, -6];
+  for (const s of ['L', 'R']) {
+    const f = s === 'R' ? mp : (p => p);
+    add(`frontLeg${s}_upper`, f(fup), 'body', 1);
+    add(`frontLeg${s}_lower`, f(flow), 'body', 1);
+    add(`frontLeg${s}_paw`, f(fpaw), 'body', 1);
+  }
+  // głowa, uszy, twarz
+  add('head', Hs([-40, -38, 0, -45, 40, -38, 60, -8, 58, 18, 40, 38, 15, 46, -15, 46, -40, 38, -58, 18, -60, -8]), 'body', 2);
+  add('earL', Hs([-58, -22, -54, -88, -12, -42]), 'body', 1);
+  add('earL', Hs([-49, -32, -50, -72, -26, -42]), 'inner', 1);
+  add('earR', Hs([12, -44, 56, -104, 62, -20]), 'body', 1);
+  add('earR', Hs([26, -42, 52, -88, 53, -32]), 'inner', 1);
+  add('head', Hs(ellipse(-24, -3, 6.4, 8.4, 12)), 'face', 1);
+  add('head', Hs(ellipse(24, -3, 6.4, 8.4, 12)), 'face', 1);
+  add('head', Hs([-6, 12, 6, 12, 0, 19]), 'face', 1);
+  addLine('head', Hs([0, 18, 0, 22]), 2.2);
+  addLine('head', Hs([-16, 22.5, -8, 29, 0, 22, 8, 29, 16, 22.5]), 2.4);
+  return parts;
+})();
+
+const CAT_ITEMS = CAT_PARTS.map(p => {
+  const inv = BONE[p.bone].restInv;
+  if (p.line) {
+    const l = []; for (let i = 0; i < p.line.length; i += 2) l.push(...mPt(inv, p.line[i], p.line[i + 1]));
+    return { bone: p.bone, tone: p.tone, line: l, w: p.w };
+  }
+  const faces = lowpoly(p.pts, { detail: p.detail, seed: p.seed }).map(f => {
+    const q = [];
+    for (let i = 0; i < 6; i += 2) q.push(...mPt(inv, f.p[i], f.p[i + 1]));
+    return { p: q, s: f.s };
+  });
+  return { bone: p.bone, tone: p.tone, faces };
+});
+
+/* Ewaluacja pozy: macierze światowe kości (w układzie kota) */
+function evalPose(pose) {
+  const W = {};
+  for (const b of BONE_LIST) {
+    const rot = mR((pose.a[b.name] || 0) * D2R);
+    W[b.name] = b.parent
+      ? mMul(W[b.parent], mMul(b.L, rot))
+      : mMul(mT(pose.rx || 0, pose.ry || 0), mMul(b.L, rot));
+  }
+  return W;
+}
+function poseBounds(W) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const it of CAT_ITEMS) {
+    const m = W[it.bone];
+    if (it.faces) {
+      for (const f of it.faces) for (let i = 0; i < 6; i += 2) {
+        const p = mPt(m, f.p[i], f.p[i + 1]);
+        if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0];
+        if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1];
+      }
+    }
+  }
+  return [x0, y0, x1, y1];
+}
+const poseKey = p => (p.rx || 0) + ',' + (p.ry || 0) + ',' + BONE_NAMES.map(n => (p.a[n] || 0).toFixed(2)).join(',');
+function evalCat(L) {
+  const key = poseKey(L.pose);
+  if (L._ev && L._ev.key === key) return L._ev;
+  const W = evalPose(L.pose);
+  return (L._ev = { key, W, bounds: poseBounds(W) });
+}
+const boneTip = (W, name) => mPt(W[name], BONE[name].len, 0);
+const boneJoint = (W, name) => mPt(W[name], 0, 0);
+
+/* =====================================================================
+   POSES: absolutne kąty -> delty względem rodzica; interpolacja
+   ===================================================================== */
+const emptyPose = () => ({ rx: 0, ry: 0, a: {} });
+function poseFromAbs(abs, rx = 0, ry = 0) {
+  const A = {}, a = {};
+  for (const b of BONE_LIST) {
+    const par = b.parent ? BONE[b.parent] : null;
+    const base = par ? A[par.name] + (b.ra - par.ra) * R2D : b.ra * R2D;
+    const target = abs[b.name];
+    const delta = target === undefined ? 0 : target - base;
+    A[b.name] = base + delta;
+    if (Math.abs(delta) > 1e-6) a[b.name] = Math.round(delta * 10) / 10;
+  }
+  return { rx, ry, a };
+}
+const POSES = {
+  sit: emptyPose(),
+  stand: poseFromAbs({
+    torso: -92, hindLegL_upper: 99, hindLegL_lower: 91, hindLegL_paw: 72,
+    hindLegR_upper: 81, hindLegR_lower: 89, hindLegR_paw: 108,
+    tail1: 150, tail2: 108, tail3: 85
+  }, 0, -14),
+  lie: poseFromAbs({
+    torso: -4, neck: -50, head: -88, earL: -112, earR: -80,
+    frontLegL_upper: 62, frontLegL_lower: 18, frontLegL_paw: 2,
+    frontLegR_upper: 52, frontLegR_lower: 12, frontLegR_paw: -2,
+    tail1: 172, tail2: 150, tail3: 120
+  }, 0, 30),
+  jump: poseFromAbs({
+    torso: -62, neck: -75, head: -80,
+    frontLegL_upper: -35, frontLegL_lower: -15, frontLegL_paw: 0,
+    frontLegR_upper: -22, frontLegR_lower: -5, frontLegR_paw: 10,
+    hindLegL_upper: 118, hindLegL_lower: 100, hindLegL_paw: 78,
+    hindLegR_upper: 62, hindLegR_lower: 82, hindLegR_paw: 102,
+    tail1: -160, tail2: -120, tail3: -75
+  }, 0, -150),
+  stretch: poseFromAbs({
+    torso: 22, neck: 0, head: -72,
+    frontLegL_upper: 62, frontLegL_lower: 20, frontLegL_paw: 0,
+    frontLegR_upper: 55, frontLegR_lower: 14, frontLegR_paw: 0,
+    hindLegL_upper: 98, hindLegL_lower: 88, hindLegL_paw: 70,
+    hindLegR_upper: 82, hindLegR_lower: 92, hindLegR_paw: 110,
+    tail1: -150, tail2: -118, tail3: -80
+  }, 0, -42),
+  tailUp: poseFromAbs({ tail1: -112, tail2: -92, tail3: -80, head: -94 }),
+  curl: poseFromAbs({
+    torso: -18, neck: 58, head: -70, earL: -100, earR: -70,
+    frontLegL_upper: 118, frontLegL_lower: 160, frontLegL_paw: 190,
+    frontLegR_upper: 105, frontLegR_lower: 150, frontLegR_paw: 190,
+    tail1: 184, tail2: 150, tail3: 85
+  }, 0, 30)
+};
+const POSE_LABELS = [['sit', 'Siedzi'], ['stand', 'Stoi'], ['lie', 'Leży'], ['jump', 'Skacze'],
+  ['stretch', 'Wyciąga się'], ['tailUp', 'Ogon w górze'], ['curl', 'Kuli się']];
+
+function lerpPose(p, q, t) {
+  const out = { rx: lerp(p.rx || 0, q.rx || 0, t), ry: lerp(p.ry || 0, q.ry || 0, t), a: {} };
+  for (const n of BONE_NAMES) {
+    const v = lerp(p.a[n] || 0, q.a[n] || 0, t);
+    if (Math.abs(v) > 1e-4) out.a[n] = v;
+  }
+  return out;
+}
+
+/* =====================================================================
+   ACCESSORIES: kształty we współrzędnych głowy (środek głowy = 0,0)
+   ===================================================================== */
+const P = (...a) => a;
+const ACC_DEFS = {
+  cap: {
+    label: 'Czapka', host: 'head', anchor: HM, color: '#e8483c', x: 0, y: -2, scale: 1,
+    defs: () => [
+      { t: 'poly', pts: P(-56, -28, -50, -56, -28, -78, 6, -86, 38, -76, 56, -50, 58, -28, 0, -22), tone: 'body', detail: 2 },
+      { t: 'poly', pts: P(-62, -30, 62, -30, 74, -18, 0, -6, -74, -18), tone: 'shade', detail: 1 },
+      { t: 'poly', pts: circ(4, -86, 6, 8), tone: 'light', detail: 1 }
+    ]
+  },
+  hat: {
+    label: 'Kapelusz', host: 'head', anchor: HM, color: '#6a4bd8', x: 0, y: -4, scale: 1,
+    defs: () => [
+      { t: 'poly', pts: ellipse(0, -40, 88, 15, 16), tone: 'shade', detail: 2 },
+      { t: 'poly', pts: P(-44, -42, -38, -92, -12, -102, 12, -102, 38, -92, 44, -42), tone: 'body', detail: 2 },
+      { t: 'poly', pts: P(-44, -46, 44, -46, 42, -60, -42, -60), tone: 'dark', detail: 1 }
+    ]
+  },
+  crown: {
+    label: 'Korona', host: 'head', anchor: HM, color: '#ffd34d', x: 0, y: -6, scale: 1,
+    defs: () => [
+      { t: 'poly', pts: P(-46, -38, -52, -90, -26, -62, 0, -98, 26, -62, 52, -90, 46, -38), tone: 'body', detail: 2 },
+      { t: 'poly', pts: P(-46, -38, 46, -38, 46, -50, -46, -50), tone: 'shade', detail: 1 },
+      { t: 'poly', pts: P(0, -88, 6, -78, 0, -70, -6, -78), tone: 'red', detail: 1 }
+    ]
+  },
+  glasses: {
+    label: 'Okulary', host: 'head', anchor: HM, color: '#2c2f33', x: 0, y: -2, scale: 1,
+    defs: () => [
+      { t: 'line', pts: ellipse(-24, -3, 17, 15, 14), closed: true, w: 3.6, tone: 'body', fillTone: 'glass', fillAlpha: 0.22 },
+      { t: 'line', pts: ellipse(24, -3, 17, 15, 14), closed: true, w: 3.6, tone: 'body', fillTone: 'glass', fillAlpha: 0.22 },
+      { t: 'line', pts: P(-8, -5, 8, -5), w: 3.4, tone: 'body' },
+      { t: 'line', pts: P(-41, -6, -60, -10), w: 3.2, tone: 'body' },
+      { t: 'line', pts: P(41, -6, 60, -10), w: 3.2, tone: 'body' }
+    ]
+  },
+  sunglasses: {
+    label: 'Okulary przeciwsłoneczne', host: 'head', anchor: HM, color: '#111418', x: 0, y: -2, scale: 1,
+    defs: () => [
+      { t: 'poly', pts: P(-48, -14, -6, -14, -9, 8, -28, 14, -46, 7), tone: 'dark', detail: 2 },
+      { t: 'poly', pts: P(48, -14, 6, -14, 9, 8, 28, 14, 46, 7), tone: 'dark', detail: 2 },
+      { t: 'line', pts: P(-50, -14, 50, -14), w: 4.6, tone: 'body' },
+      { t: 'line', pts: P(-6, -11, 6, -11), w: 4, tone: 'body' },
+      { t: 'line', pts: P(-44, -8, -30, -10), w: 2, tone: 'glass' },
+      { t: 'line', pts: P(14, -8, 28, -10), w: 2, tone: 'glass' }
+    ]
+  },
+  scarf: {
+    label: 'Szalik', host: 'neck', anchor: mT(-6, -234), color: '#ff7a2f', x: 0, y: 0, scale: 1,
+    defs: () => [
+      { t: 'strip', top: P(-64, -4, -34, -16, 0, -20, 34, -16, 64, -4), bot: P(-68, 16, -34, 22, 0, 26, 34, 22, 68, 16), tone: 'body' },
+      { t: 'poly', pts: P(8, 18, 46, 18, 56, 88, 26, 100, 12, 64), tone: 'shade', detail: 2 },
+      { t: 'line', pts: P(14, 54, 52, 56), w: 6, tone: 'light' },
+      { t: 'line', pts: P(12, 74, 55, 76), w: 6, tone: 'light' }
+    ]
+  },
+  headphones: {
+    label: 'Słuchawki', host: 'head', anchor: HM, color: '#2fa8ff', x: 0, y: 0, scale: 1,
+    defs: () => {
+      const arc = []; for (let i = 0; i <= 14; i++) { const a = Math.PI * (1 - i / 14); arc.push(Math.cos(a) * 66, -4 - Math.sin(a) * 78); }
+      return [
+        { t: 'line', pts: arc, w: 8, tone: 'dark' },
+        { t: 'poly', pts: ellipse(-68, 6, 15, 24, 12), tone: 'body', detail: 2 },
+        { t: 'poly', pts: ellipse(68, 6, 15, 24, 12), tone: 'body', detail: 2 },
+        { t: 'poly', pts: ellipse(-68, 6, 7, 14, 10), tone: 'shade', detail: 1 },
+        { t: 'poly', pts: ellipse(68, 6, 7, 14, 10), tone: 'shade', detail: 1 }
+      ];
+    }
+  },
+  headband: {
+    label: 'Opaska', host: 'head', anchor: HM, color: '#ff4fa3', x: 0, y: -2, scale: 1,
+    defs: () => [
+      { t: 'strip', top: P(-60, -14, -40, -32, 0, -38, 40, -32, 60, -14), bot: P(-60, -2, -40, -20, 0, -26, 40, -20, 60, -2), tone: 'body' },
+      { t: 'poly', pts: P(36, -34, 56, -22, 50, -6, 30, -18), tone: 'shade', detail: 1 }
+    ]
+  },
+  bow: {
+    label: 'Kokardka', host: 'head', anchor: HM, color: '#ff4fa3', x: 40, y: -46, scale: 0.9, rot: 18,
+    defs: () => [
+      { t: 'poly', pts: P(0, 0, -36, -20, -38, 18), tone: 'body', detail: 1 },
+      { t: 'poly', pts: P(0, 0, 36, -20, 38, 18), tone: 'body', detail: 1 },
+      { t: 'poly', pts: circ(0, 0, 8, 8), tone: 'shade', detail: 1 }
+    ]
+  }
+};
+for (const k in ACC_DEFS) { const d = ACC_DEFS[k]; Object.assign(d, buildItems(d.defs())); }
+
+/* =====================================================================
+   VEHICLES: samochód, motocykl, samolot (współrzędne: y w górę ujemne,
+   0,0 = punkt styku z ziemią w środku)
+   ===================================================================== */
+const wheel = (cx, cy, r) => [
+  { t: 'poly', pts: circ(cx, cy, r, 14), tone: 'dark', detail: 2 },
+  { t: 'poly', pts: circ(cx, cy, r * 0.52, 10), tone: 'metal', detail: 1 }
+];
+const VEH = {
+  car: [
+    {
+      name: 'Sedan', shadow: 540, snaps: [{ n: 'Dach', x: -20, y: -167 }, { n: 'Maska', x: 150, y: -102 }],
+      defs: [
+        { t: 'poly', pts: P(-262, -28, -258, -90, -190, -100, -120, -102, 50, -104, 160, -98, 255, -72, 264, -40, 264, -28), tone: 'body', detail: 2 },
+        { t: 'poly', pts: P(-135, -100, -95, -162, 40, -168, 112, -102), tone: 'body', detail: 2 },
+        { t: 'poly', pts: P(-122, -106, -92, -154, -10, -156, -10, -106), tone: 'glassD', detail: 1 },
+        { t: 'poly', pts: P(2, -106, 2, -157, 36, -157, 94, -106), tone: 'glassD', detail: 1 },
+        { t: 'poly', pts: P(236, -56, 266, -52, 266, -34, 236, -34), tone: 'metal', detail: 1 },
+        { t: 'poly', pts: P(244, -92, 264, -88, 264, -70, 242, -72), tone: 'lamp', detail: 1 },
+        { t: 'poly', pts: P(-266, -88, -246, -92, -246, -70, -266, -70), tone: 'red', detail: 1 },
+        ...wheel(-150, -40, 40), ...wheel(150, -40, 40)
+      ]
+    },
+    {
+      name: 'Sportowy', shadow: 560, snaps: [{ n: 'Dach', x: -10, y: -141 }, { n: 'Bagażnik', x: -205, y: -92 }],
+      defs: [
+        { t: 'poly', pts: P(-272, -26, -268, -76, -180, -94, 120, -84, 262, -52, 274, -30, 274, -26), tone: 'body', detail: 2 },
+        { t: 'poly', pts: P(-100, -92, -52, -140, 30, -142, 108, -84), tone: 'body', detail: 2 },
+        { t: 'poly', pts: P(-84, -94, -50, -130, 22, -132, 84, -88), tone: 'glassD', detail: 1 },
+        { t: 'poly', pts: P(-276, -84, -226, -88, -228, -98, -280, -98), tone: 'shade', detail: 1 },
+        { t: 'poly', pts: P(-258, -82, -250, -82, -250, -66, -258, -66), tone: 'shade', detail: 1 },
+        { t: 'poly', pts: P(240, -64, 272, -50, 272, -42, 238, -50), tone: 'lamp', detail: 1 },
+        { t: 'poly', pts: P(-274, -74, -262, -76, -262, -60, -274, -60), tone: 'red', detail: 1 },
+        ...wheel(-170, -34, 34), ...wheel(170, -34, 34)
+      ]
+    }
+  ],
+  moto: [
+    {
+      name: 'Cruiser', shadow: 330, snaps: [{ n: 'Siedzisko', x: -64, y: -98 }, { n: 'Bak', x: 28, y: -112 }],
+      defs: [
+        { t: 'poly', pts: P(-112, -50, -26, -62, -22, -52, -108, -40), tone: 'metal', detail: 1 },
+        { t: 'poly', pts: P(-164, -82, -76, -100, -70, -86, -150, -68), tone: 'body', detail: 1 },
+        { t: 'poly', pts: P(-30, -78, 42, -84, 38, -40, -26, -38), tone: 'metal', detail: 2 },
+        { t: 'poly', pts: P(-24, -102, 40, -114, 78, -104, 62, -80, -22, -76), tone: 'body', detail: 2 },
+        { t: 'poly', pts: P(-110, -94, -30, -104, -24, -88, -106, -80), tone: 'dark', detail: 1 },
+        { t: 'poly', pts: P(-104, -42, 8, -36, 8, -26, -104, -32), tone: 'metal', detail: 1 },
+        { t: 'poly', pts: P(70, -122, 82, -122, 118, -52, 106, -52), tone: 'metal', detail: 1 },
+        { t: 'poly', pts: P(60, -128, 98, -134, 100, -126, 64, -120), tone: 'dark', detail: 1 },
+        { t: 'poly', pts: P(94, -114, 116, -114, 116, -94, 94, -98), tone: 'lamp', detail: 1 },
+        ...wheel(-112, -48, 48), ...wheel(112, -48, 48)
+      ]
+    },
+    {
+      name: 'Sportowy', shadow: 320, snaps: [{ n: 'Siedzisko', x: -46, y: -116 }, { n: 'Kapota', x: 40, y: -96 }],
+      defs: [
+        { t: 'poly', pts: P(-112, -50, -26, -62, -22, -52, -108, -40), tone: 'metal', detail: 1 },
+        { t: 'poly', pts: P(-150, -76, -90, -122, -30, -108, -34, -80, -110, -66), tone: 'body', detail: 2 },
+        { t: 'poly', pts: P(-90, -110, -20, -118, -14, -104, -86, -98), tone: 'dark', detail: 1 },
+        { t: 'poly', pts: P(-30, -76, 40, -80, 36, -40, -26, -38), tone: 'metal', detail: 2 },
+        { t: 'poly', pts: P(14, -70, 54, -140, 104, -122, 126, -84, 74, -58), tone: 'body', detail: 2 },
+        { t: 'poly', pts: P(56, -138, 84, -162, 104, -126), tone: 'glassD', detail: 1 },
+        { t: 'poly', pts: P(104, -104, 124, -98, 124, -86, 100, -90), tone: 'lamp', detail: 1 },
+        { t: 'poly', pts: P(66, -70, 78, -70, 118, -52, 106, -52), tone: 'metal', detail: 1 },
+        ...wheel(-112, -48, 48), ...wheel(112, -48, 48)
+      ]
+    }
+  ],
+  plane: [
+    {
+      name: 'Śmigłowy', shadow: 0, snaps: [{ n: 'Kokpit', x: 62, y: -121 }, { n: 'Grzbiet', x: -80, y: -113 }],
+      defs: [
+        { t: 'poly', pts: P(-210, -84, -240, -156, -186, -156, -130, -100), tone: 'shade', detail: 1 },
+        { t: 'poly', pts: P(-200, -66, -250, -88, -246, -74, -170, -56), tone: 'shade', detail: 1 },
+        { t: 'poly', pts: P(-210, -80, -122, -112, 60, -122, 150, -102, 192, -72, 150, -42, 40, -32, -120, -50), tone: 'body', detail: 2 },
+        { t: 'poly', pts: P(-50, -60, 40, -64, 130, -18, 10, -14), tone: 'light', detail: 2 },
+        { t: 'poly', pts: P(36, -118, 112, -104, 126, -88, 36, -90), tone: 'glassD', detail: 1 },
+        { t: 'poly', pts: P(188, -138, 200, -138, 202, -8, 190, -8), tone: 'metal', detail: 1 },
+        { t: 'poly', pts: circ(194, -72, 9, 8), tone: 'dark', detail: 1 },
+        { t: 'line', pts: P(20, -26, 20, -12), w: 5, tone: 'dark' },
+        ...wheel(20, -12, 12)
+      ]
+    },
+    {
+      name: 'Odrzutowiec', shadow: 0, snaps: [{ n: 'Kokpit', x: 95, y: -101 }, { n: 'Grzbiet', x: -40, y: -99 }],
+      defs: [
+        { t: 'poly', pts: P(-214, -72, -254, -156, -206, -156, -124, -94), tone: 'shade', detail: 1 },
+        { t: 'poly', pts: P(-62, -54, 50, -54, -26, -2, -118, -2), tone: 'light', detail: 2 },
+        { t: 'poly', pts: P(-214, -70, -60, -100, 120, -98, 252, -66, 120, -48, -60, -52), tone: 'body', detail: 2 },
+        { t: 'poly', pts: P(58, -98, 130, -96, 176, -80, 84, -84), tone: 'glassD', detail: 1 },
+        { t: 'poly', pts: P(-222, -82, -200, -84, -200, -58, -222, -60), tone: 'dark', detail: 1 },
+        { t: 'poly', pts: P(-100, -90, -60, -92, -64, -82, -100, -80), tone: 'red', detail: 1 }
+      ]
+    }
+  ]
+};
+for (const kind in VEH) VEH[kind].forEach(v => Object.assign(v, buildItems(v.defs)));
+const VEH_LABEL = { car: 'Samochód', moto: 'Motocykl', plane: 'Samolot' };
+
+/* =====================================================================
+   BACKGROUND
+   ===================================================================== */
+const STAGE = { x: -800, y: -800, w: 1600, h: 1600 };
+const images = {};            // id -> { data, img }
+let asphaltCache = { seed: null, tile: null };
+
+function makeAsphaltTile(seed) {
+  const S = 512, c = document.createElement('canvas'); c.width = c.height = S;
+  const x = c.getContext('2d'), img = x.createImageData(S, S), d = img.data, r = makeRng(seed * 7919 + 13);
+  const G = 24, low = new Float32Array(G * G);
+  for (let i = 0; i < low.length; i++) low[i] = r() * 2 - 1;
+  const lowAt = (px, py) => {
+    const gx = px / S * G, gy = py / S * G, ix = Math.floor(gx), iy = Math.floor(gy);
+    let fx = gx - ix, fy = gy - iy; fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+    const a = low[(iy % G) * G + ix % G], b = low[(iy % G) * G + (ix + 1) % G];
+    const cc = low[((iy + 1) % G) * G + ix % G], dd = low[((iy + 1) % G) * G + (ix + 1) % G];
+    return lerp(lerp(a, b, fx), lerp(cc, dd, fx), fy);
+  };
+  for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) {
+    let v = 36 + lowAt(px, py) * 4.5 + (r() + r() - 1) * 15;
+    const u = r();
+    if (u < 0.012) v += 30 + r() * 42; else if (u < 0.02) v -= 16;
+    v = clamp(v, 6, 150);
+    const i = (py * S + px) * 4;
+    d[i] = v; d[i + 1] = v + 1.5; d[i + 2] = v - 0.5; d[i + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+  return c;
+}
+function asphaltTile(seed) {
+  if (asphaltCache.seed !== seed) asphaltCache = { seed, tile: makeAsphaltTile(seed) };
+  return asphaltCache.tile;
+}
+function getBgImage(id) {
+  const e = id && images[id];
+  return e && e.img && e.img.complete && e.img.naturalWidth ? e.img : null;
+}
+
+function bgSolid(ctx, bg) { ctx.fillStyle = bg.color; ctx.fillRect(STAGE.x, STAGE.y, STAGE.w, STAGE.h); }
+function bgGradient(ctx, bg) {
+  const a = bg.angle * D2R, cx = STAGE.x + STAGE.w / 2, cy = STAGE.y + STAGE.h / 2;
+  const r = STAGE.w / 2 * (Math.abs(Math.cos(a)) + Math.abs(Math.sin(a)));
+  const g = ctx.createLinearGradient(cx - Math.cos(a) * r, cy - Math.sin(a) * r, cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+  g.addColorStop(0, bg.color); g.addColorStop(1, bg.color2);
+  ctx.fillStyle = g; ctx.fillRect(STAGE.x, STAGE.y, STAGE.w, STAGE.h);
+}
+function bgAsphalt(ctx, bg) {
+  ctx.fillStyle = '#25282a'; ctx.fillRect(STAGE.x, STAGE.y, STAGE.w, STAGE.h);
+  ctx.fillStyle = ctx.createPattern(asphaltTile(bg.seed), 'repeat');
+  ctx.fillRect(STAGE.x, STAGE.y, STAGE.w, STAGE.h);
+  const g = ctx.createRadialGradient(0, 0, STAGE.w * 0.25, 0, 0, STAGE.w * 0.75);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.45)');
+  ctx.fillStyle = g; ctx.fillRect(STAGE.x, STAGE.y, STAGE.w, STAGE.h);
+}
+function bgNeonGrid(ctx, bg) {
+  const g = ctx.createRadialGradient(0, 0, 50, 0, 0, STAGE.w * 0.75);
+  g.addColorStop(0, '#0b1511'); g.addColorStop(1, '#030605');
+  ctx.fillStyle = g; ctx.fillRect(STAGE.x, STAGE.y, STAGE.w, STAGE.h);
+  const step = 80, line = path => { ctx.beginPath(); path(); };
+  const trace = () => {
+    for (let x = STAGE.x; x <= STAGE.x + STAGE.w; x += step) { ctx.moveTo(x, STAGE.y); ctx.lineTo(x, STAGE.y + STAGE.h); }
+    for (let y = STAGE.y; y <= STAGE.y + STAGE.h; y += step) { ctx.moveTo(STAGE.x, y); ctx.lineTo(STAGE.x + STAGE.w, y); }
+  };
+  ctx.lineCap = 'butt';
+  line(trace); ctx.strokeStyle = hexAlpha(bg.color, 0.14); ctx.lineWidth = 9; ctx.stroke();
+  line(trace); ctx.strokeStyle = hexAlpha(bg.color, 0.85); ctx.lineWidth = 1.8; ctx.stroke();
+}
+function bgImage(ctx, bg) {
+  ctx.fillStyle = bg.color; ctx.fillRect(STAGE.x, STAGE.y, STAGE.w, STAGE.h);
+  const img = getBgImage(bg.imageId); if (!img) return;
+  const k = bg.fit === 'contain' ? Math.min(STAGE.w / img.naturalWidth, STAGE.h / img.naturalHeight)
+    : Math.max(STAGE.w / img.naturalWidth, STAGE.h / img.naturalHeight);
+  const w = img.naturalWidth * k, h = img.naturalHeight * k;
+  ctx.save(); ctx.beginPath(); ctx.rect(STAGE.x, STAGE.y, STAGE.w, STAGE.h); ctx.clip();
+  ctx.drawImage(img, STAGE.x + (STAGE.w - w) / 2, STAGE.y + (STAGE.h - h) / 2, w, h);
+  ctx.restore();
+}
+const BG_DRAW = { solid: bgSolid, gradient: bgGradient, asphalt: bgAsphalt, neon: bgNeonGrid, image: bgImage };
+function drawBackground(ctx, bg) {
+  const fn = BG_DRAW[bg.mode]; if (!fn) return;
+  ctx.save(); ctx.beginPath(); ctx.rect(STAGE.x, STAGE.y, STAGE.w, STAGE.h); ctx.clip();
+  fn(ctx, bg); ctx.restore();
+}
+
+/* =====================================================================
+   SCENE MODEL
+   ===================================================================== */
+const state = {
+  scene: null, sel: null, lastCatId: null, areaMode: false,
+  exp: { x: -330, y: -330, w: 660, h: 660 },
+  ui: { handles: true, ik: false, free: false, ratio: '1:1', res: '1024', transparent: false }
+};
+const view = { x: 0, y: 0, z: 1 };
+const anims = new Map();
+const ratioValue = { free: null, '1:1': 1, '4:5': 0.8, '16:9': 16 / 9, '3:4': 0.75 };
+
+const findLayer = id => state.scene.layers.find(l => l.id === id) || null;
+const selLayer = () => (state.sel == null ? null : findLayer(state.sel));
+const uid = () => state.scene.nextId++;
+function layerName(base) {
+  const c = state.scene.counters; c[base] = (c[base] || 0) + 1;
+  return `${base} ${c[base]}`;
+}
+const defGlow = on => ({ on, strength: 1, radius: 30, color: '#00ff40' });
+
+function makeCat(s) {
+  return {
+    id: s.nextId++, type: 'cat', name: (s.counters.Kot = (s.counters.Kot || 0) + 1, 'Kot ' + s.counters.Kot),
+    x: 0, y: 190, scale: 1.3, rot: 0, flip: false, color: '#a9e8b8', alpha: 0.85, visible: true,
+    glow: defGlow(true), shadow: true, parent: null, pose: clone(POSES.sit)
+  };
+}
+function defaultScene() {
+  const s = {
+    v: 1, nextId: 1, counters: {}, layers: [],
+    bg: { mode: 'asphalt', color: '#1d3326', color2: '#06210f', angle: 45, fit: 'cover', imageId: null, seed: 7 }
+  };
+  s.layers.push(makeCat(s));
+  return s;
+}
+const VEH_COLOR = { car: '#4aa8ff', moto: '#ff7a3d', plane: '#dfe6ee' };
+function makeVeh(kind, variant) {
+  return {
+    id: uid(), type: 'veh', kind, variant, name: layerName(VEH_LABEL[kind]),
+    x: 0, y: 200, scale: kind === 'moto' ? 1.35 : 1, rot: 0, flip: false, color: VEH_COLOR[kind], alpha: 1, visible: true,
+    glow: defGlow(false), snap: 0, parent: null
+  };
+}
+function makeAcc(kind, catId) {
+  const d = ACC_DEFS[kind];
+  return {
+    id: uid(), type: 'acc', kind, catId, name: layerName(d.label), x: d.x, y: d.y, scale: d.scale, rot: d.rot || 0,
+    flip: false, color: d.color, alpha: 1, visible: true, glow: defGlow(false), parent: null
+  };
+}
+
+/* ---- macierze warstw ---- */
+function accHostMatrix(cat, L) {
+  const d = ACC_DEFS[L.kind], b = BONE[d.host];
+  return mMul(evalCat(cat).W[d.host], mMul(b.restInv, d.anchor));
+}
+function parentMatrix(L) {
+  if (L.type === 'acc') { const c = findLayer(L.catId); return c ? mMul(layerMatrix(c), accHostMatrix(c, L)) : MI; }
+  if (L.parent != null) { const p = findLayer(L.parent); if (p) return layerMatrix(p); }
+  return MI;
+}
+const localMatrix = L => mMul(mT(L.x, L.y), mMul(mR(L.rot * D2R), mS(L.flip ? -L.scale : L.scale, L.scale)));
+function layerMatrix(L) { return mMul(parentMatrix(L), localMatrix(L)); }
+const worldScale = L => mScaleOf(layerMatrix(L));
+
+function layerSpec(L) { return L.type === 'veh' ? VEH[L.kind][L.variant] : ACC_DEFS[L.kind]; }
+function layerBounds(L) { return L.type === 'cat' ? evalCat(L).bounds : layerSpec(L).bounds; }
+
+/* =====================================================================
+   RENDERER
+   ===================================================================== */
+const scratch = document.createElement('canvas'), sctx = scratch.getContext('2d');
+
+function paintCatPose(ctx, W, color) {
+  const pal = makePalette(color);
+  for (const it of CAT_ITEMS) {
+    const m = W[it.bone];
+    ctx.save(); ctx.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
+    drawItem(ctx, it, pal);
+    ctx.restore();
+  }
+}
+function paintLayerContent(ctx, L) {
+  if (L.type === 'cat') { paintCatPose(ctx, evalCat(L).W, L.color); return; }
+  const pal = makePalette(L.color);
+  for (const it of layerSpec(L).items) drawItem(ctx, it, pal);
+}
+
+function groundShadow(ctx, M, cx, w, flat, inner, outer, alpha) {
+  ctx.save(); ctx.transform(M[0], M[1], M[2], M[3], M[4], M[5]);
+  ctx.translate(cx, 6); ctx.scale(1, flat);
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, w / 2);
+  g.addColorStop(0, rgbCss(inner, 0.9 * alpha)); g.addColorStop(0.5, rgbCss(mixRgb(inner, outer, 0.5), 0.5 * alpha));
+  g.addColorStop(1, rgbCss(outer, 0));
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, w / 2, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+function drawCatShadow(ctx, L, M) {
+  const W = evalCat(L).W, tips = ['frontLegL_paw', 'frontLegR_paw', 'hindLegL_paw', 'hindLegR_paw'].map(n => boneTip(W, n));
+  const cx = tips.reduce((a, p) => a + p[0], 0) / tips.length;
+  const lift = Math.max(0, -Math.max(...tips.map(p => p[1])));
+  const k = 1 / (1 + lift / 140), g = hex2rgb(L.glow.color);
+  groundShadow(ctx, M, cx, 420 * (0.7 + 0.3 * k), 0.22, mixRgb(g, [0, 0, 0], 0.93), mixRgb(g, [0, 0, 0], 0.62), Math.min(1, L.alpha + 0.15) * k);
+}
+
+function glowPasses(ctx, L, X0, Y0, w, gpx, cw) {
+  const D = cw + w + 4000, s = L.glow.strength;
+  ctx.shadowColor = L.glow.color; ctx.shadowOffsetX = -D; ctx.shadowOffsetY = 0;
+  const passes = [[0.3, 1], [0.7, 0.9], [1.5, 0.75]];
+  if (s > 1) passes.push([0.5, s - 1], [1.1, s - 1]);
+  for (const [kb, ka] of passes) {
+    ctx.shadowBlur = Math.max(1, gpx * kb);
+    ctx.globalAlpha = clamp(Math.min(s, 1) * ka, 0, 1);
+    ctx.drawImage(scratch, X0 + D, Y0);
+  }
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0;
+}
+
+// warstwa jako sprite: najpierw nieprzezroczysta, potem alfa + poświata
+function drawSprite(ctx, L, M) {
+  const t = ctx.getTransform(), B = [t.a, t.b, t.c, t.d, t.e, t.f];
+  const full = mMul(B, M), b = layerBounds(L);
+  const gpx = L.glow.on ? L.glow.radius * Math.hypot(B[0], B[1]) : 0;
+  const pad = L.glow.on ? Math.min(700, Math.ceil(gpx * 1.9) + 4) : 2;
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const [px, py] of [[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]]]) {
+    const p = mPt(full, px, py);
+    x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]);
+  }
+  const cw = ctx.canvas.width, ch = ctx.canvas.height;
+  const X0 = Math.max(Math.floor(x0 - pad), -pad), Y0 = Math.max(Math.floor(y0 - pad), -pad);
+  const X1 = Math.min(Math.ceil(x1 + pad), cw + pad), Y1 = Math.min(Math.ceil(y1 + pad), ch + pad);
+  const w = X1 - X0, h = Y1 - Y0;
+  if (w <= 0 || h <= 0 || !isFinite(w + h)) return;
+  if (scratch.width !== w || scratch.height !== h) { scratch.width = w; scratch.height = h; }
+  else { sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.clearRect(0, 0, w, h); }
+  sctx.setTransform(full[0], full[1], full[2], full[3], full[4] - X0, full[5] - Y0);
+  paintLayerContent(sctx, L);
+  sctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (L.glow.on && L.glow.strength > 0) glowPasses(ctx, L, X0, Y0, w, gpx, cw);
+  ctx.globalAlpha = L.alpha; ctx.drawImage(scratch, X0, Y0);
+  ctx.restore();
+}
+
+function drawLayer(ctx, L) {
+  if (!L.visible) return;
+  if (L.type === 'acc' && !findLayer(L.catId)) return;
+  const M = layerMatrix(L);
+  if (L.type === 'cat' && L.shadow && L.parent == null) drawCatShadow(ctx, L, M);
+  if (L.type === 'veh' && layerSpec(L).shadow) groundShadow(ctx, M, 0, layerSpec(L).shadow, 0.12, [0, 0, 0], [0, 0, 0], 0.45);
+  if (L.alpha >= 0.999 && !L.glow.on) {
+    ctx.save(); ctx.transform(M[0], M[1], M[2], M[3], M[4], M[5]);
+    paintLayerContent(ctx, L); ctx.restore();
+  } else drawSprite(ctx, L, M);
+}
+
+// jedna funkcja renderująca - ekran i eksport używają tej samej ścieżki
+function renderScene(ctx, o) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, o.w, o.h);
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  const c = o.cam;
+  if (o.editor && state.scene.bg.mode === 'transparent') drawChecker(ctx, c);
+  ctx.setTransform(c[0], c[1], c[2], c[3], c[4], c[5]);
+  if (!o.noBg) drawBackground(ctx, state.scene.bg);
+  for (const L of state.scene.layers) { ctx.setTransform(c[0], c[1], c[2], c[3], c[4], c[5]); drawLayer(ctx, L); }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+let checkerPat = null;
+function drawChecker(ctx, cam) {
+  if (!checkerPat) {
+    const c = document.createElement('canvas'); c.width = c.height = 32;
+    const x = c.getContext('2d'); x.fillStyle = '#1b211e'; x.fillRect(0, 0, 32, 32);
+    x.fillStyle = '#262e2a'; x.fillRect(0, 0, 16, 16); x.fillRect(16, 16, 16, 16);
+    checkerPat = ctx.createPattern(c, 'repeat');
+  }
+  const x0 = cam[0] * STAGE.x + cam[4], y0 = cam[3] * STAGE.y + cam[5];
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = checkerPat;
+  ctx.fillRect(x0, y0, STAGE.w * cam[0], STAGE.h * cam[3]); ctx.restore();
+}
+
+/* =====================================================================
+   POSE OPS: animacja, FK, IK (FABRIK)
+   ===================================================================== */
+function applyPose(L, target, animate = true) {
+  const to = lerpPose(target, target, 0);
+  if (!animate) { L.pose = to; commit(); requestRender(); return; }
+  anims.set(L.id, { from: clone(L.pose), to, t0: performance.now() });
+  requestRender();
+}
+function stepAnims(now) {
+  if (!anims.size) return false;
+  let finished = false;
+  for (const [id, a] of anims) {
+    const L = findLayer(id);
+    if (!L) { anims.delete(id); continue; }
+    const t = clamp((now - a.t0) / 300, 0, 1);
+    L.pose = lerpPose(a.from, a.to, easeInOut(t));
+    if (t >= 1) { anims.delete(id); finished = true; }
+  }
+  if (finished && !anims.size) commit();
+  return anims.size > 0;
+}
+
+function clampDelta(b, deg) {
+  while (deg > 180) deg -= 360;
+  while (deg < -180) deg += 360;
+  return state.ui.free ? deg : clamp(deg, b.lo, b.hi);
+}
+function boneFrame(W, b, pose) {
+  return b.parent ? mMul(W[b.parent], b.L) : mMul(mT(pose.rx || 0, pose.ry || 0), b.L);
+}
+// FK: kość celuje w punkt (współrzędne kota); kąt liczony w ramce rodzica
+function aimBone(L, name, p) {
+  const b = BONE[name], W = evalPose(L.pose);
+  const q = mPt(mInv(boneFrame(W, b, L.pose)), p[0], p[1]);
+  L.pose.a[name] = clampDelta(b, Math.atan2(q[1], q[0]) * R2D);
+}
+function solveIK(L, chain, target) {
+  const W0 = evalPose(L.pose), n = chain.length;
+  const P = chain.map(nm => boneJoint(W0, nm)); P.push(boneTip(W0, chain[n - 1]));
+  const lens = chain.map(nm => BONE[nm].len), root = P[0].slice();
+  const total = lens.reduce((a, v) => a + v, 0), dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  const place = (from, to, len) => {
+    const d = dist(from, to) || 1e-6;
+    return [from[0] + (to[0] - from[0]) / d * len, from[1] + (to[1] - from[1]) / d * len];
+  };
+  if (dist(root, target) >= total) {
+    for (let i = 0; i < n; i++) P[i + 1] = place(P[i], target, lens[i]);
+  } else {
+    for (let it = 0; it < 14 && dist(P[n], target) > 0.4; it++) {
+      P[n] = target.slice();
+      for (let i = n - 1; i >= 0; i--) P[i] = place(P[i + 1], P[i], lens[i]);
+      P[0] = root.slice();
+      for (let i = 0; i < n; i++) P[i + 1] = place(P[i], P[i + 1], lens[i]);
+    }
+  }
+  for (let i = 0; i < n; i++) aimBone(L, chain[i], P[i + 1]);
+}
+
+/* =====================================================================
+   LAYER OPS
+   ===================================================================== */
+const stripKeys = (k, v) => (typeof k === 'string' && k[0] === '_' ? undefined : v);
+const cloneLayer = L => JSON.parse(JSON.stringify(L, stripKeys));
+
+function select(id) {
+  state.sel = id;
+  const L = selLayer();
+  if (L && L.type === 'cat') state.lastCatId = L.id;
+  UI.rebuild(); requestRender();
+}
+function targetCat() {
+  const L = selLayer();
+  if (L && L.type === 'cat') return L;
+  if (L && L.type === 'acc') return findLayer(L.catId);
+  return findLayer(state.lastCatId) || state.scene.layers.find(l => l.type === 'cat') || null;
+}
+function viewCenterWorld() {
+  const r = cv.getBoundingClientRect();
+  return [(r.width / 2 - view.x) / view.z, (r.height / 2 - view.y) / view.z];
+}
+function addLayer(L, index) {
+  const arr = state.scene.layers;
+  if (index === undefined) arr.push(L); else arr.splice(index, 0, L);
+  select(L.id); commit();
+}
+function addVehicle(kind, variant) {
+  const L = makeVeh(kind, variant), c = viewCenterWorld();
+  L.x = clamp(c[0], STAGE.x, STAGE.x + STAGE.w); L.y = clamp(c[1] + 180, STAGE.y, STAGE.y + STAGE.h);
+  const firstCat = state.scene.layers.findIndex(l => l.type === 'cat');
+  addLayer(L, firstCat < 0 ? undefined : firstCat);
+}
+function addAccessory(kind) {
+  const cat = targetCat();
+  if (!cat) { toast('Najpierw dodaj kota'); return; }
+  addLayer(makeAcc(kind, cat.id));
+}
+function addCat() {
+  const L = makeCat(state.scene), c = viewCenterWorld();
+  L.x = c[0]; L.y = c[1] + 180;
+  addLayer(L);
+}
+function detach(L) {
+  if (L.parent == null) return;
+  const m = layerMatrix(L), det = mDet(m);
+  L.parent = null; L.x = m[4]; L.y = m[5]; L.scale = mScaleOf(m);
+  L.flip = det < 0;
+  L.rot = (det < 0 ? Math.atan2(-m[1], -m[0]) : Math.atan2(m[1], m[0])) * R2D;
+}
+function deleteLayer(L) {
+  const arr = state.scene.layers;
+  const gone = new Set([L.id]);
+  if (L.type === 'cat') arr.forEach(a => { if (a.type === 'acc' && a.catId === L.id) gone.add(a.id); });
+  arr.forEach(a => { if (a.parent === L.id) detach(a); });
+  state.scene.layers = arr.filter(a => !gone.has(a.id));
+  if (gone.has(state.sel)) state.sel = null;
+  if (gone.has(state.lastCatId)) state.lastCatId = null;
+  UI.rebuild(); requestRender(); commit();
+}
+function duplicateLayer(L) {
+  const arr = state.scene.layers, idx = arr.indexOf(L), s = state.scene;
+  const c = cloneLayer(L); c.id = uid(); c.name = L.name + ' kopia';
+  if (L.parent == null) { c.x += 40; c.y += 30; }
+  arr.splice(idx + 1, 0, c);
+  if (L.type === 'cat') {
+    let at = idx + 2;
+    for (const a of arr.filter(a => a.type === 'acc' && a.catId === L.id)) {
+      const ca = cloneLayer(a); ca.id = uid(); ca.catId = c.id; arr.splice(at++, 0, ca);
+    }
+  }
+  select(c.id); commit();
+}
+function moveLayer(L, mode) {
+  const arr = state.scene.layers, i = arr.indexOf(L);
+  arr.splice(i, 1);
+  let j = i;
+  if (mode === 'top') j = arr.length; else if (mode === 'bottom') j = 0;
+  else if (mode === 'up') j = Math.min(arr.length, i + 1); else if (mode === 'down') j = Math.max(0, i - 1);
+  arr.splice(j, 0, L);
+  UI.rebuild(); requestRender(); commit();
+}
+function seatCat(cat, veh) {
+  const sp = VEH[veh.kind][veh.variant].snaps[veh.snap] || VEH[veh.kind][veh.variant].snaps[0];
+  const rel = worldScale(cat) / worldScale(veh);
+  cat.parent = veh.id; cat.x = sp.x; cat.y = sp.y; cat.rot = 0; cat.flip = false; cat.scale = Math.min(rel, 0.8);
+  const arr = state.scene.layers;
+  if (arr.indexOf(cat) < arr.indexOf(veh)) { arr.splice(arr.indexOf(cat), 1); arr.splice(arr.indexOf(veh) + 1, 0, cat); }
+  state.lastCatId = cat.id;
+  UI.rebuild(); commit();
+  applyPose(cat, POSES.sit);
+}
+
+/* =====================================================================
+   HISTORY (undo/redo) + AUTOSAVE
+   ===================================================================== */
+const HIST_MAX = 100, hist = { stack: [], idx: -1 };
+const LS_SCENE = 'pfp-studio.scene.v1', LS_IMG = 'pfp-studio.images.v1', LS_POSES = 'pfp-studio.poses.v1';
+const snapshot = () => JSON.stringify(state.scene, stripKeys);
+
+function commit() {
+  const s = snapshot();
+  if (hist.stack[hist.idx] === s) { return; }
+  hist.stack.length = hist.idx + 1; hist.stack.push(s);
+  if (hist.stack.length > HIST_MAX) hist.stack.shift();
+  hist.idx = hist.stack.length - 1;
+  UI.updateHistory(); scheduleSave();
+}
+function loadSnapshot(s) {
+  state.scene = JSON.parse(s); anims.clear();
+  if (state.sel != null && !selLayer()) state.sel = null;
+  UI.rebuild(); UI.updateHistory(); requestRender(); scheduleSave();
+}
+function undo() { if (hist.idx > 0) { hist.idx--; loadSnapshot(hist.stack[hist.idx]); } }
+function redo() { if (hist.idx < hist.stack.length - 1) { hist.idx++; loadSnapshot(hist.stack[hist.idx]); } }
+
+let saveTimer = 0;
+function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 350); }
+function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function saveNow() {
+  const data = JSON.stringify({ scene: state.scene, exp: state.exp, view, ui: state.ui }, stripKeys);
+  if (!lsSet(LS_SCENE, data)) toast('Nie można zapisać sceny (pamięć przeglądarki)');
+  const id = state.scene.bg.imageId;
+  if (id && images[id]) {
+    if (!lsSet(LS_IMG, JSON.stringify({ [id]: images[id].data }))) toast('Obraz tła zbyt duży do autozapisu');
+  } else try { localStorage.removeItem(LS_IMG); } catch (e) { /* brak dostępu */ }
+}
+function loadSaved() {
+  try {
+    const raw = lsGet(LS_SCENE); if (!raw) return false;
+    const d = JSON.parse(raw);
+    if (!d.scene || !Array.isArray(d.scene.layers) || !d.scene.bg) return false;
+    state.scene = d.scene;
+    if (d.exp) state.exp = d.exp;
+    if (d.view) Object.assign(view, d.view);
+    if (d.ui) Object.assign(state.ui, d.ui);
+    const im = lsGet(LS_IMG);
+    if (im) for (const [id, data] of Object.entries(JSON.parse(im))) registerImage(id, data);
+    return true;
+  } catch (e) { return false; }
+}
+function registerImage(id, data) {
+  const img = new Image();
+  images[id] = { data, img };
+  img.onload = () => requestRender();
+  img.src = data;
+}
+
+/* =====================================================================
+   SELECTION GEOMETRY / HIT-TESTING
+   ===================================================================== */
+const w2s = (x, y) => [x * view.z + view.x, y * view.z + view.y];
+const s2w = (x, y) => [(x - view.x) / view.z, (y - view.y) / view.z];
+
+function pointInTri(px, py, t) {
+  const d = (t[2] - t[0]) * (t[5] - t[1]) - (t[4] - t[0]) * (t[3] - t[1]);
+  if (Math.abs(d) < 1e-9) return false;
+  const a = ((t[2] - px) * (t[5] - py) - (t[4] - px) * (t[3] - py)) / d;
+  const b = ((t[4] - px) * (t[1] - py) - (t[0] - px) * (t[5] - py)) / d;
+  return a >= 0 && b >= 0 && a + b <= 1;
+}
+function hitTestLayer(L, w) {
+  const M = layerMatrix(L), s = mScaleOf(M) || 1;
+  const q = mPt(mInv(M), w[0], w[1]), b = layerBounds(L), pad = 7 / (view.z * s);
+  if (q[0] < b[0] - pad || q[0] > b[2] + pad || q[1] < b[1] - pad || q[1] > b[3] + pad) return false;
+  if (L.type === 'acc') return true;
+  if (L.type === 'cat') {
+    const W = evalCat(L).W;
+    for (const it of CAT_ITEMS) {
+      if (!it.faces) continue;
+      const lp = mPt(mInv(W[it.bone]), q[0], q[1]);
+      for (const f of it.faces) if (pointInTri(lp[0], lp[1], f.p)) return true;
+    }
+    return false;
+  }
+  for (const it of layerSpec(L).items) if (it.faces) for (const f of it.faces) if (pointInTri(q[0], q[1], f.p)) return true;
+  return false;
+}
+function hitLayer(w) {
+  const arr = state.scene.layers;
+  for (let i = arr.length - 1; i >= 0; i--) if (arr[i].visible && hitTestLayer(arr[i], w)) return arr[i];
+  return null;
+}
+function selHandles(L) {
+  const M = layerMatrix(L), b = layerBounds(L);
+  const c = [[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]]].map(p => { const w = mPt(M, p[0], p[1]); return w2s(w[0], w[1]); });
+  const ctr = [(c[0][0] + c[2][0]) / 2, (c[0][1] + c[2][1]) / 2];
+  const tm = [(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2];
+  const dx = tm[0] - ctr[0], dy = tm[1] - ctr[1], dl = Math.hypot(dx, dy) || 1;
+  return { corners: c, center: ctr, rot: [tm[0] + dx / dl * 28, tm[1] + dy / dl * 28], scale: c[2], topMid: tm };
+}
+function jointHandles(cat) {
+  const W = evalCat(cat).W, M = layerMatrix(cat), out = [];
+  for (const b of BONE_LIST) {
+    const p = b.name === 'root' ? boneJoint(W, 'root') : boneTip(W, b.name), w = mPt(M, p[0], p[1]);
+    out.push({ bone: b.name, s: w2s(w[0], w[1]) });
+  }
+  return out;
+}
+
+/* =====================================================================
+   CANVAS / VIEW / FRAME LOOP
+   ===================================================================== */
+const cv = $('cv'), mainCtx = cv.getContext('2d');
+let dpr = 1, dirty = true, raf = 0, syncPending = false;
+
+function requestRender() { dirty = true; if (!raf) raf = requestAnimationFrame(frame); }
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 3);
+  const r = cv.getBoundingClientRect();
+  cv.width = Math.max(1, Math.round(r.width * dpr)); cv.height = Math.max(1, Math.round(r.height * dpr));
+  requestRender();
+}
+function frame(now) {
+  raf = 0;
+  const animating = stepAnims(now);
+  if (!dirty && !animating) return;
+  dirty = false;
+  renderScene(mainCtx, { w: cv.width, h: cv.height, cam: [view.z * dpr, 0, 0, view.z * dpr, view.x * dpr, view.y * dpr], editor: true });
+  drawOverlay(mainCtx);
+  $('zoomLbl').textContent = Math.round(view.z * 100) + '%';
+  if (syncPending) { syncPending = false; UI.sync(); }
+  if (animating) requestRender();
+}
+function zoomAt(sx, sy, nz) {
+  nz = clamp(nz, 0.08, 8);
+  const wx = (sx - view.x) / view.z, wy = (sy - view.y) / view.z;
+  view.x = sx - wx * nz; view.y = sy - wy * nz; view.z = nz;
+  requestRender(); scheduleSave();
+}
+function fitView(rect) {
+  const r = cv.getBoundingClientRect(), pad = 0.14;
+  view.z = clamp(Math.min(r.width / (rect.w * (1 + pad * 2)), r.height / (rect.h * (1 + pad * 2))), 0.08, 8);
+  view.x = r.width / 2 - (rect.x + rect.w / 2) * view.z; view.y = r.height / 2 - (rect.y + rect.h / 2) * view.z;
+  requestRender(); scheduleSave();
+}
+let toastTimer = 0;
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+/* =====================================================================
+   OVERLAY (tylko edytor; nigdy nie trafia do eksportu)
+   ===================================================================== */
+const ACCENT = '#00ff40';
+function drawHandleSquare(c, p, size = 9) {
+  c.fillStyle = '#fff'; c.strokeStyle = ACCENT; c.lineWidth = 1.5;
+  c.beginPath(); c.rect(p[0] - size / 2, p[1] - size / 2, size, size); c.fill(); c.stroke();
+}
+function drawSelectionOverlay(c, L) {
+  const hd = selHandles(L);
+  c.strokeStyle = ACCENT; c.lineWidth = 1.2; c.setLineDash([5, 4]);
+  c.beginPath(); hd.corners.forEach((p, i) => (i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]))); c.closePath(); c.stroke();
+  c.setLineDash([]);
+  c.beginPath(); c.moveTo(hd.topMid[0], hd.topMid[1]); c.lineTo(hd.rot[0], hd.rot[1]); c.stroke();
+  c.fillStyle = '#fff'; c.beginPath(); c.arc(hd.rot[0], hd.rot[1], 6, 0, Math.PI * 2); c.fill(); c.stroke();
+  drawHandleSquare(c, hd.scale);
+  const o = mPt(layerMatrix(L), 0, 0), so = w2s(o[0], o[1]);
+  c.beginPath(); c.moveTo(so[0] - 5, so[1]); c.lineTo(so[0] + 5, so[1]); c.moveTo(so[0], so[1] - 5); c.lineTo(so[0], so[1] + 5); c.stroke();
+}
+function drawJointOverlay(c, cat) {
+  const active = drag && drag.type === 'joint' ? drag.bone : null;
+  for (const j of jointHandles(cat)) {
+    const ik = state.ui.ik && IK_CHAINS[j.bone], act = j.bone === active;
+    c.beginPath();
+    if (ik) { c.rect(j.s[0] - 6, j.s[1] - 6, 12, 12); } else c.arc(j.s[0], j.s[1], j.bone === 'root' ? 8 : 5.5, 0, Math.PI * 2);
+    c.fillStyle = act ? ACCENT : (ik ? '#ffd24a' : 'rgba(0,255,64,0.25)');
+    c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 1.4; c.stroke();
+  }
+}
+function areaScreenRect() {
+  const a = w2s(state.exp.x, state.exp.y), b = w2s(state.exp.x + state.exp.w, state.exp.y + state.exp.h);
+  return { x: a[0], y: a[1], w: b[0] - a[0], h: b[1] - a[1] };
+}
+const AREA_HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+function areaHandlePos(r, h) {
+  const x = h.includes('w') ? r.x : h.includes('e') ? r.x + r.w : r.x + r.w / 2;
+  const y = h.includes('n') ? r.y : h.includes('s') ? r.y + r.h : r.y + r.h / 2;
+  return [x, y];
+}
+function drawAreaOverlay(c) {
+  const r = areaScreenRect(), W = cv.width / dpr, Hh = cv.height / dpr;
+  c.fillStyle = 'rgba(0,0,0,0.62)'; c.beginPath();
+  c.rect(0, 0, W, Hh); c.rect(r.x, r.y, r.w, r.h); c.fill('evenodd');
+  c.strokeStyle = '#fff'; c.lineWidth = 1.5; c.strokeRect(r.x, r.y, r.w, r.h);
+  c.strokeStyle = 'rgba(255,255,255,0.25)'; c.lineWidth = 1; c.beginPath();
+  for (let i = 1; i < 3; i++) {
+    c.moveTo(r.x + r.w * i / 3, r.y); c.lineTo(r.x + r.w * i / 3, r.y + r.h);
+    c.moveTo(r.x, r.y + r.h * i / 3); c.lineTo(r.x + r.w, r.y + r.h * i / 3);
+  }
+  c.stroke();
+  for (const h of AREA_HANDLES) drawHandleSquare(c, areaHandlePos(r, h), 10);
+  const o = outputSize(), label = `${o.w} × ${o.h} px`;
+  c.font = '600 12px system-ui,sans-serif';
+  const tw = c.measureText(label).width + 14, ty = r.y > 30 ? r.y - 24 : r.y + r.h + 8;
+  c.fillStyle = 'rgba(0,0,0,0.75)'; c.fillRect(r.x, ty, tw, 20);
+  c.fillStyle = ACCENT; c.fillText(label, r.x + 7, ty + 14);
+}
+function drawOverlay(ctx) {
+  const c = ctx; c.save(); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const a = w2s(STAGE.x, STAGE.y);
+  c.strokeStyle = 'rgba(0,255,64,0.22)'; c.setLineDash([6, 6]); c.lineWidth = 1;
+  c.strokeRect(a[0], a[1], STAGE.w * view.z, STAGE.h * view.z); c.setLineDash([]);
+  if (state.areaMode) drawAreaOverlay(c);
+  else {
+    const L = selLayer();
+    if (L && L.visible) {
+      drawSelectionOverlay(c, L);
+      if (L.type === 'cat' && state.ui.handles) drawJointOverlay(c, L);
+    }
+  }
+  c.restore();
+}
+
+/* =====================================================================
+   EXPORT: zaznaczanie obszaru + render PNG
+   ===================================================================== */
+function outputSize() {
+  const e = state.exp, r = state.ui.res;
+  let sc = r[0] === 'x' ? +r.slice(1) : +r / Math.max(e.w, e.h);
+  const mx = Math.max(e.w, e.h) * sc;
+  if (mx > 8192) sc *= 8192 / mx;
+  const w = Math.max(1, Math.round(e.w * sc)), h = Math.max(1, Math.round(e.h * sc));
+  return { w, h, scale: w / e.w };
+}
+function fitRectInStage(r) {
+  r.w = Math.min(r.w, STAGE.w); r.h = Math.min(r.h, STAGE.h);
+  r.x = clamp(r.x, STAGE.x, STAGE.x + STAGE.w - r.w); r.y = clamp(r.y, STAGE.y, STAGE.y + STAGE.h - r.h);
+  return r;
+}
+function rectFromCorner(ax, ay, px, py, ratio) {
+  let w = Math.abs(px - ax), h = Math.abs(py - ay);
+  if (ratio) { if (w / Math.max(h, 1e-6) > ratio) h = w / ratio; else w = h * ratio; }
+  const sx = px >= ax ? 1 : -1, sy = py >= ay ? 1 : -1;
+  const availW = sx > 0 ? STAGE.x + STAGE.w - ax : ax - STAGE.x, availH = sy > 0 ? STAGE.y + STAGE.h - ay : ay - STAGE.y;
+  const k = Math.min(1, availW / Math.max(w, 1e-6), availH / Math.max(h, 1e-6));
+  w *= k; h *= k;
+  return { x: sx > 0 ? ax : ax - w, y: sy > 0 ? ay : ay - h, w, h };
+}
+function resizeRect(s, handle, pt, ratio) {
+  const px = clamp(pt[0], STAGE.x, STAGE.x + STAGE.w), py = clamp(pt[1], STAGE.y, STAGE.y + STAGE.h);
+  const x2 = s.x + s.w, y2 = s.y + s.h, min = 24;
+  if (handle.length === 2) {
+    const ax = handle.includes('w') ? x2 : s.x, ay = handle.includes('n') ? y2 : s.y;
+    return rectFromCorner(ax, ay, px, py, ratio);
+  }
+  const r = { x: s.x, y: s.y, w: s.w, h: s.h };
+  if (handle === 'e') r.w = Math.max(min, px - s.x); else if (handle === 'w') { r.w = Math.max(min, x2 - px); r.x = x2 - r.w; }
+  else if (handle === 's') r.h = Math.max(min, py - s.y); else { r.h = Math.max(min, y2 - py); r.y = y2 - r.h; }
+  if (ratio) {
+    if (handle === 'e' || handle === 'w') { const cy = s.y + s.h / 2; r.h = r.w / ratio; r.y = cy - r.h / 2; }
+    else { const cx = s.x + s.w / 2; r.w = r.h * ratio; r.x = cx - r.w / 2; }
+    if (r.w > STAGE.w || r.h > STAGE.h) { const k = Math.min(STAGE.w / r.w, STAGE.h / r.h); r.w *= k; r.h *= k; }
+  }
+  return fitRectInStage(r);
+}
+function applyRatio() {
+  const ratio = ratioValue[state.ui.ratio]; if (!ratio) return;
+  const e = state.exp, cx = e.x + e.w / 2, cy = e.y + e.h / 2;
+  let w = e.w, h = w / ratio;
+  if (h > STAGE.h) { h = STAGE.h; w = h * ratio; }
+  if (w > STAGE.w) { w = STAGE.w; h = w / ratio; }
+  state.exp = fitRectInStage({ x: cx - w / 2, y: cy - h / 2, w, h });
+  UI.updateExport(); requestRender(); scheduleSave();
+}
+function setAreaMode(on) {
+  state.areaMode = on;
+  $('bArea').classList.toggle('on', on);
+  UI.updateExport(); requestRender();
+  if (on) toast('Przeciągnij na płótnie, aby zaznaczyć obszar eksportu');
+}
+function stamp() {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+function exportPNG() {
+  const o = outputSize(), e = state.exp, c = document.createElement('canvas');
+  c.width = o.w; c.height = o.h;
+  const sc = o.scale;
+  renderScene(c.getContext('2d'), { w: o.w, h: o.h, cam: [sc, 0, 0, sc, -e.x * sc, -e.y * sc], noBg: state.ui.transparent || state.scene.bg.mode === 'transparent' });
+  c.toBlob(blob => {
+    if (!blob) { toast('Eksport nie powiódł się'); return; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `pfp-${stamp()}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast(`Zapisano ${o.w} × ${o.h} px`);
+  }, 'image/png');
+}
+
+/* =====================================================================
+   INTERAKCJA: wskaźnik (mysz + dotyk), pan/zoom, drag
+   ===================================================================== */
+const pointers = new Map();
+let drag = null, pinch = null, spaceDown = false;
+const localXY = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+
+function endDrag() { if (drag && drag.changed) commit(); drag = null; syncPending = true; requestRender(); }
+function startPinch() {
+  const p = [...pointers.values()];
+  pinch = { d: Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]) || 1, c: [(p[0][0] + p[1][0]) / 2, (p[0][1] + p[1][1]) / 2], v: { ...view } };
+}
+function movePinch() {
+  const p = [...pointers.values()]; if (p.length < 2) return;
+  const d = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]) || 1, c = [(p[0][0] + p[1][0]) / 2, (p[0][1] + p[1][1]) / 2];
+  const nz = clamp(pinch.v.z * d / pinch.d, 0.08, 8), wx = (pinch.c[0] - pinch.v.x) / pinch.v.z, wy = (pinch.c[1] - pinch.v.y) / pinch.v.z;
+  view.z = nz; view.x = c[0] - wx * nz; view.y = c[1] - wy * nz; requestRender();
+}
+
+function hitJoint(sx, sy, rad) {
+  const cat = selLayer();
+  if (!cat || cat.type !== 'cat' || !cat.visible || !state.ui.handles) return null;
+  let best = null, bd = rad;
+  for (const j of jointHandles(cat)) { const d = Math.hypot(j.s[0] - sx, j.s[1] - sy); if (d <= bd) { bd = d; best = j.bone; } }
+  return best;
+}
+function hitSelHandle(sx, sy, rad) {
+  const L = selLayer(); if (!L || !L.visible) return null;
+  const hd = selHandles(L);
+  if (Math.hypot(hd.rot[0] - sx, hd.rot[1] - sy) <= rad) return 'rot';
+  if (Math.hypot(hd.scale[0] - sx, hd.scale[1] - sy) <= rad) return 'scale';
+  return null;
+}
+function hitAreaHandle(sx, sy, rad) {
+  const r = areaScreenRect();
+  for (const h of AREA_HANDLES) { const p = areaHandlePos(r, h); if (Math.abs(p[0] - sx) <= rad && Math.abs(p[1] - sy) <= rad) return h; }
+  return sx >= r.x && sx <= r.x + r.w && sy >= r.y && sy <= r.y + r.h ? 'move' : null;
+}
+
+function beginLayerDrag(L, w) {
+  const pInv = mInv(parentMatrix(L));
+  drag = { type: 'move', id: L.id, pInv, p0: mPt(pInv, w[0], w[1]), x0: L.x, y0: L.y, changed: false };
+}
+function beginHandleDrag(kind, L, w) {
+  const o = mPt(layerMatrix(L), 0, 0);
+  drag = {
+    type: kind, id: L.id, o, a0: Math.atan2(w[1] - o[1], w[0] - o[0]), d0: Math.hypot(w[0] - o[0], w[1] - o[1]) || 1,
+    rot0: L.rot, scale0: L.scale, sign: mDet(parentMatrix(L)) < 0 ? -1 : 1, changed: false
+  };
+}
+function beginJointDrag(bone, w) {
+  const cat = selLayer(), p = mPt(mInv(layerMatrix(cat)), w[0], w[1]);
+  drag = { type: 'joint', bone, id: cat.id, start: p, rx: cat.pose.rx || 0, ry: cat.pose.ry || 0, changed: false };
+}
+function beginAreaDrag(sx, sy, w, touch) {
+  const h = hitAreaHandle(sx, sy, touch ? 18 : 10);
+  if (h === 'move') drag = { type: 'areaMove', start: { ...state.exp }, w0: w, changed: false };
+  else if (h) drag = { type: 'areaResize', handle: h, start: { ...state.exp }, changed: false };
+  else drag = { type: 'areaNew', anchor: w, prev: { ...state.exp }, moved: false, changed: false };
+}
+
+function dragLayerMove(w) {
+  const L = findLayer(drag.id); if (!L) return;
+  const p = mPt(drag.pInv, w[0], w[1]);
+  L.x = drag.x0 + p[0] - drag.p0[0]; L.y = drag.y0 + p[1] - drag.p0[1];
+}
+function dragRotate(w, shift) {
+  const L = findLayer(drag.id); if (!L) return;
+  let r = drag.rot0 + drag.sign * (Math.atan2(w[1] - drag.o[1], w[0] - drag.o[0]) - drag.a0) * R2D;
+  r = ((r + 540) % 360) - 180;
+  L.rot = shift ? Math.round(r / 15) * 15 : r;
+}
+function dragScale(w) {
+  const L = findLayer(drag.id); if (!L) return;
+  L.scale = clamp(drag.scale0 * Math.hypot(w[0] - drag.o[0], w[1] - drag.o[1]) / drag.d0, 0.05, 10);
+}
+function dragJoint(w) {
+  const cat = findLayer(drag.id); if (!cat) return;
+  const p = mPt(mInv(layerMatrix(cat)), w[0], w[1]);
+  anims.delete(cat.id);
+  if (drag.bone === 'root') { cat.pose.rx = drag.rx + p[0] - drag.start[0]; cat.pose.ry = drag.ry + p[1] - drag.start[1]; return; }
+  const chain = state.ui.ik && IK_CHAINS[drag.bone];
+  if (chain) solveIK(cat, chain, p); else aimBone(cat, drag.bone, p);
+}
+function dragArea(w) {
+  const d = drag, ratio = ratioValue[state.ui.ratio];
+  if (d.type === 'areaMove') {
+    state.exp = fitRectInStage({ x: d.start.x + w[0] - d.w0[0], y: d.start.y + w[1] - d.w0[1], w: d.start.w, h: d.start.h });
+  } else if (d.type === 'areaResize') state.exp = resizeRect(d.start, d.handle, w, ratio);
+  else {
+    const px = clamp(w[0], STAGE.x, STAGE.x + STAGE.w), py = clamp(w[1], STAGE.y, STAGE.y + STAGE.h);
+    if (Math.hypot(px - d.anchor[0], py - d.anchor[1]) * view.z < 6 && !d.moved) return;
+    d.moved = true;
+    const r = rectFromCorner(d.anchor[0], d.anchor[1], px, py, ratio);
+    if (r.w >= 8 && r.h >= 8) state.exp = r;
+  }
+  UI.updateExport(); scheduleSave();
+}
+
+cv.addEventListener('pointerdown', e => {
+  cv.focus({ preventScroll: true });
+  try { cv.setPointerCapture(e.pointerId); } catch (_) { /* brak przechwytu */ }
+  const [sx, sy] = localXY(e); pointers.set(e.pointerId, [sx, sy]);
+  if (pointers.size === 2) { endDrag(); startPinch(); return; }
+  if (pointers.size > 2) return;
+  const w = s2w(sx, sy), touch = e.pointerType !== 'mouse';
+  if (e.button === 1 || e.button === 2 || spaceDown) { drag = { type: 'pan', sx, sy, vx: view.x, vy: view.y }; e.preventDefault(); return; }
+  if (state.areaMode) { beginAreaDrag(sx, sy, w, touch); return; }
+  const rad = touch ? 20 : 11, j = hitJoint(sx, sy, rad);
+  if (j) { beginJointDrag(j, w); return; }
+  const hh = hitSelHandle(sx, sy, rad);
+  if (hh) { beginHandleDrag(hh, selLayer(), w); return; }
+  const L = hitLayer(w);
+  if (L) { if (state.sel !== L.id) select(L.id); beginLayerDrag(L, w); return; }
+  if (state.sel != null) select(null);
+  drag = { type: 'pan', sx, sy, vx: view.x, vy: view.y };
+});
+cv.addEventListener('pointermove', e => {
+  const [sx, sy] = localXY(e);
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId, [sx, sy]);
+  if (pinch) { movePinch(); return; }
+  const w = s2w(sx, sy);
+  if (!drag) {
+    if (e.pointerType === 'mouse') {
+      let cur = 'default';
+      if (state.areaMode) { const h = hitAreaHandle(sx, sy, 10); cur = !h ? 'crosshair' : h === 'move' ? 'move' : 'pointer'; }
+      else if (hitJoint(sx, sy, 11) || hitSelHandle(sx, sy, 11)) cur = 'pointer';
+      else if (spaceDown) cur = 'grab';
+      cv.style.cursor = cur;
+    }
+    return;
+  }
+  const d = drag;
+  if (d.type === 'pan') { view.x = d.vx + sx - d.sx; view.y = d.vy + sy - d.sy; requestRender(); return; }
+  if (d.type === 'move') dragLayerMove(w);
+  else if (d.type === 'rot') dragRotate(w, e.shiftKey);
+  else if (d.type === 'scale') dragScale(w);
+  else if (d.type === 'joint') dragJoint(w);
+  else dragArea(w);
+  d.changed = true; syncPending = true; requestRender();
+});
+function pointerEnd(e) {
+  pointers.delete(e.pointerId);
+  if (pinch) { if (pointers.size < 2) { pinch = null; scheduleSave(); } return; }
+  if (drag && drag.type === 'areaNew' && !drag.moved) { state.exp = drag.prev; UI.updateExport(); }
+  if (drag && drag.type === 'pan') scheduleSave();
+  if (drag && drag.type && drag.type.startsWith('area')) { const ch = drag.changed; drag = null; if (ch) scheduleSave(); requestRender(); return; }
+  endDrag();
+}
+cv.addEventListener('pointerup', pointerEnd);
+cv.addEventListener('pointercancel', pointerEnd);
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  const [sx, sy] = localXY(e);
+  zoomAt(sx, sy, view.z * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)));
+}, { passive: false });
+
+/* ---- klawiatura ---- */
+function nudge(L, dx, dy) {
+  const inv = mInv(parentMatrix(L));
+  L.x += inv[0] * dx + inv[2] * dy; L.y += inv[1] * dx + inv[3] * dy;
+  syncPending = true; requestRender(); scheduleSave();
+}
+const typing = e => /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && e.target.type !== 'range' && e.target.type !== 'checkbox' && e.target.type !== 'color';
+window.addEventListener('keydown', e => {
+  if (typing(e)) return;
+  const k = e.key, L = selLayer(), mod = e.ctrlKey || e.metaKey;
+  if (k === ' ') { spaceDown = true; cv.style.cursor = 'grab'; e.preventDefault(); return; }
+  if (mod && k.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if (mod && k.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
+  if (mod && k.toLowerCase() === 'd') { e.preventDefault(); if (L) duplicateLayer(L); return; }
+  if ((k === 'Delete' || k === 'Backspace') && L) { e.preventDefault(); deleteLayer(L); return; }
+  if (k === 'Escape') { if (state.areaMode) setAreaMode(false); else select(null); return; }
+  if (k === '0') { fitView(state.exp); return; }
+  if (k === '+' || k === '=') { zoomAt(cv.clientWidth / 2, cv.clientHeight / 2, view.z * 1.2); return; }
+  if (k === '-') { zoomAt(cv.clientWidth / 2, cv.clientHeight / 2, view.z / 1.2); return; }
+  if (k === ']' && L) { moveLayer(L, e.shiftKey ? 'top' : 'up'); return; }
+  if (k === '[' && L) { moveLayer(L, e.shiftKey ? 'bottom' : 'down'); return; }
+  if (L && k.startsWith('Arrow')) {
+    e.preventDefault();
+    const st = (e.shiftKey ? 10 : 1) / view.z;
+    nudge(L, k === 'ArrowLeft' ? -st : k === 'ArrowRight' ? st : 0, k === 'ArrowUp' ? -st : k === 'ArrowDown' ? st : 0);
+  }
+});
+window.addEventListener('keyup', e => {
+  if (e.key === ' ') { spaceDown = false; cv.style.cursor = 'default'; }
+  if (e.key.startsWith('Arrow') && selLayer()) commit();
+});
+window.addEventListener('resize', resize);
+window.addEventListener('beforeunload', saveNow);
+
+/* =====================================================================
+   UI: panel sterowania
+   ===================================================================== */
+function h(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  if (attrs) for (const k in attrs) {
+    const v = attrs[k];
+    if (k === 'class') e.className = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (v === true) e.setAttribute(k, '');
+    else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) e.append(kid.nodeType ? kid : document.createTextNode(kid));
+  return e;
+}
+
+const thumbCache = new Map();
+function poseThumb(pose) {
+  const key = poseKey(pose);
+  if (thumbCache.has(key)) return thumbCache.get(key);
+  const c = document.createElement('canvas'); c.width = c.height = 112;
+  const x = c.getContext('2d'), W = evalPose(pose), b = poseBounds(W), bw = b[2] - b[0], bh = b[3] - b[1];
+  const s = Math.min(92 / bw, 92 / bh);
+  x.translate(56 - (b[0] + bw / 2) * s, 56 - (b[1] + bh / 2) * s); x.scale(s, s);
+  paintCatPose(x, W, '#a9e8b8');
+  const url = c.toDataURL(); thumbCache.set(key, url); return url;
+}
+
+const UI = (() => {
+  const panel = $('panel'), sections = [], syncers = [];
+  let customPoses = [], seatTarget = null, poseName = '';
+
+  try { customPoses = JSON.parse(lsGet(LS_POSES) || '[]'); } catch (e) { customPoses = []; }
+  const saveCustomPoses = () => lsSet(LS_POSES, JSON.stringify(customPoses));
+
+  /* ---- budowniczowie pól ---- */
+  function range(parent, label, min, max, step, get, set, fmt) {
+    const inp = h('input', { type: 'range', min, max, step }), val = h('span', { class: 'val' });
+    const show = () => { val.textContent = fmt ? fmt(get()) : String(Math.round(get() * 100) / 100); };
+    const upd = () => { inp.value = get(); show(); };
+    inp.addEventListener('input', () => { set(+inp.value); show(); requestRender(); });
+    inp.addEventListener('change', () => commit());
+    syncers.push(() => { if (document.activeElement !== inp) upd(); }); upd();
+    parent.append(h('label', { class: 'row' }, h('span', { class: 'lbl' }, label), inp, val));
+  }
+  function color(parent, label, get, set) {
+    const inp = h('input', { type: 'color' });
+    inp.addEventListener('input', () => { set(inp.value); requestRender(); });
+    inp.addEventListener('change', () => commit());
+    syncers.push(() => { if (document.activeElement !== inp) inp.value = get(); }); inp.value = get();
+    parent.append(h('label', { class: 'row' }, h('span', { class: 'lbl' }, label), inp));
+  }
+  function check(parent, label, get, set, rebuildAfter) {
+    const inp = h('input', { type: 'checkbox' });
+    inp.checked = !!get();
+    inp.addEventListener('change', () => { set(inp.checked); requestRender(); commit(); if (rebuildAfter) rebuild(); });
+    syncers.push(() => { inp.checked = !!get(); });
+    parent.append(h('label', { class: 'row' }, h('span', { class: 'lbl' }, label), inp));
+  }
+  function select(parent, label, opts, get, set, rebuildAfter) {
+    const inp = h('select', null, opts.map(([v, t]) => h('option', { value: v }, t)));
+    inp.value = get();
+    inp.addEventListener('change', () => { set(inp.value); requestRender(); commit(); if (rebuildAfter) rebuild(); });
+    parent.append(h('label', { class: 'row' }, h('span', { class: 'lbl' }, label), inp));
+  }
+  function text(parent, label, get, set) {
+    const inp = h('input', { type: 'text' }); inp.value = get();
+    inp.addEventListener('change', () => { set(inp.value); commit(); rebuild(); });
+    parent.append(h('label', { class: 'row' }, h('span', { class: 'lbl' }, label), inp));
+  }
+  const sub = (parent, t) => parent.append(h('div', { class: 'sub' }, t));
+  const btn = (label, fn, cls) => h('button', { class: cls || '', onclick: fn }, label);
+
+  /* ---- formularz właściwości warstwy ---- */
+  function propsForm(body, L) {
+    sub(body, 'Właściwości: ' + L.name);
+    text(body, 'Nazwa', () => L.name, v => { L.name = v || L.name; });
+    color(body, 'Kolor', () => L.color, v => { L.color = v; });
+    range(body, 'Przezroczystość', 0.1, 1, 0.01, () => L.alpha, v => { L.alpha = v; });
+    range(body, 'Rozmiar', 0.05, 4, 0.01, () => L.scale, v => { L.scale = v; }, v => '×' + v.toFixed(2));
+    range(body, 'Obrót', -180, 180, 1, () => L.rot, v => { L.rot = v; }, v => Math.round(v) + '°');
+    if (L.type === 'acc') {
+      range(body, 'Przesunięcie X', -140, 140, 1, () => L.x, v => { L.x = v; });
+      range(body, 'Przesunięcie Y', -140, 140, 1, () => L.y, v => { L.y = v; });
+    }
+    check(body, 'Odbicie poziome', () => L.flip, v => { L.flip = v; });
+    check(body, 'Widoczna', () => L.visible, v => { L.visible = v; }, true);
+    sub(body, 'Poświata');
+    check(body, 'Włączona', () => L.glow.on, v => { L.glow.on = v; });
+    range(body, 'Siła', 0, 2, 0.05, () => L.glow.strength, v => { L.glow.strength = v; });
+    range(body, 'Promień', 0, 120, 1, () => L.glow.radius, v => { L.glow.radius = v; });
+    color(body, 'Kolor poświaty', () => L.glow.color, v => { L.glow.color = v; });
+    if (L.type === 'cat') check(body, 'Cień pod kotem', () => L.shadow, v => { L.shadow = v; });
+  }
+
+  /* ---- sekcje ---- */
+  function buildCat(body) {
+    const cat = targetCat();
+    if (!cat) { body.append(h('div', { class: 'note' }, 'Brak kota w scenie.'), btn('Dodaj kota', addCat)); return; }
+    sub(body, 'Gotowe pozy');
+    const grid = h('div', { class: 'grid' });
+    for (const [k, lbl] of POSE_LABELS) grid.append(poseButton(lbl, POSES[k], cat));
+    body.append(grid);
+    body.append(h('div', { class: 'btns' },
+      btn('Reset pozy', () => applyPose(cat, POSES.sit)),
+      btn('Odbij poziomo', () => { cat.flip = !cat.flip; commit(); requestRender(); syncPending = true; }),
+      btn('Cofnij', undo), btn('Ponów', redo)));
+    sub(body, 'Edycja pozy');
+    check(body, 'Uchwyty stawów', () => state.ui.handles, v => { state.ui.handles = v; });
+    check(body, 'IK łap i ogona', () => state.ui.ik, v => { state.ui.ik = v; });
+    check(body, 'Swobodny tryb', () => state.ui.free, v => { state.ui.free = v; });
+    body.append(h('div', { class: 'note' }, 'Przeciągaj kółka na kocie. Uchwyt bioder przesuwa kota w pozie. Z IK kwadratowe uchwyty końcówek (łapy, ogon) ciągną cały łańcuch.'));
+    const nameIn = h('input', { type: 'text', placeholder: 'Nazwa własnej pozy' });
+    nameIn.value = poseName; nameIn.addEventListener('input', () => { poseName = nameIn.value; });
+    body.append(h('div', { class: 'row' }, nameIn, btn('Zapisz własną pozę', () => {
+      customPoses.push({ name: poseName.trim() || 'Poza ' + (customPoses.length + 1), pose: clone(cat.pose) });
+      poseName = ''; saveCustomPoses(); rebuild();
+    })));
+    if (customPoses.length) {
+      sub(body, 'Zapisane pozy');
+      customPoses.forEach((cp, i) => body.append(h('div', { class: 'saved', onclick: () => applyPose(cat, cp.pose) },
+        h('img', { src: poseThumb(cp.pose), width: 34, height: 34, alt: '' }), h('span', { class: 'nm' }, cp.name),
+        h('button', { class: 'sm danger', title: 'Usuń pozę', onclick: ev => { ev.stopPropagation(); customPoses.splice(i, 1); saveCustomPoses(); rebuild(); } }, 'Usuń'))));
+    }
+    const vehs = state.scene.layers.filter(l => l.type === 'veh');
+    if (cat.parent != null) body.append(btn('Zdejmij kota z obiektu', () => { detach(cat); commit(); rebuild(); requestRender(); }));
+    else if (vehs.length) {
+      sub(body, 'Posadź kota');
+      if (!vehs.some(v => v.id === seatTarget)) seatTarget = vehs[0].id;
+      const sel = h('select', { onchange: ev => { seatTarget = +ev.target.value; } }, vehs.map(v => h('option', { value: v.id }, v.name)));
+      sel.value = seatTarget;
+      body.append(h('div', { class: 'row' }, sel, btn('Posadź', () => { const v = findLayer(seatTarget); if (v) seatCat(cat, v); })));
+    }
+    propsForm(body, cat);
+  }
+  function poseButton(lbl, pose, cat) {
+    return h('button', { class: 'pose', title: lbl, onclick: () => applyPose(cat, pose) },
+      h('img', { src: poseThumb(pose), width: 56, height: 56, alt: '', style: 'border-radius:6px;background:#0a110d' }), h('span', null, lbl));
+  }
+
+  function buildLayers(body) {
+    const arr = state.scene.layers;
+    if (!arr.length) body.append(h('div', { class: 'note' }, 'Scena jest pusta.'));
+    for (let i = arr.length - 1; i >= 0; i--) {
+      const L = arr[i], on = h('input', { type: 'checkbox', title: 'Widoczność' });
+      on.checked = L.visible;
+      on.addEventListener('click', ev => ev.stopPropagation());
+      on.addEventListener('change', () => { L.visible = on.checked; requestRender(); commit(); });
+      body.append(h('div', { class: 'layer' + (L.id === state.sel ? ' sel' : '') + (L.type === 'acc' || L.parent != null ? ' child' : ''), onclick: () => select(L.id) },
+        on, h('span', { class: 'nm' }, L.name), h('span', { class: 'tg' }, L.type === 'cat' ? 'kot' : L.type === 'acc' ? 'akces.' : 'obiekt')));
+    }
+    const L = selLayer();
+    body.append(h('div', { class: 'btns' },
+      btn('Dodaj kota', addCat),
+      btn('Wyżej', () => L && moveLayer(L, 'up')), btn('Niżej', () => L && moveLayer(L, 'down'))));
+    body.append(h('div', { class: 'btns' },
+      btn('Na wierzch', () => L && moveLayer(L, 'top')), btn('Na spód', () => L && moveLayer(L, 'bottom')),
+      btn('Duplikuj', () => L && duplicateLayer(L)), btn('Usuń', () => L && deleteLayer(L), 'danger')));
+    if (!L) body.querySelectorAll('.btns:last-child button').forEach(b => { b.disabled = true; });
+  }
+
+  function buildAcc(body) {
+    const cat = targetCat();
+    body.append(h('div', { class: 'note' }, cat ? `Dodaje do: ${cat.name}` : 'Najpierw dodaj kota.'));
+    const grid = h('div', { class: 'grid g3' });
+    for (const k in ACC_DEFS) grid.append(btn(ACC_DEFS[k].label, () => addAccessory(k)));
+    body.append(grid);
+    const L = selLayer();
+    if (L && L.type === 'acc') propsForm(body, L);
+  }
+
+  function buildVeh(body) {
+    for (const kind in VEH) {
+      sub(body, VEH_LABEL[kind]);
+      const g = h('div', { class: 'grid g3' });
+      VEH[kind].forEach((v, i) => g.append(btn(v.name, () => addVehicle(kind, i))));
+      body.append(g);
+    }
+    const L = selLayer();
+    if (L && L.type === 'veh') {
+      const spec = VEH[L.kind];
+      select(body, 'Wariant', spec.map((v, i) => [i, v.name]), () => L.variant, v => { L.variant = +v; L.snap = 0; }, true);
+      select(body, 'Punkt zaczepienia', spec[L.variant].snaps.map((s, i) => [i, s.n]), () => L.snap, v => { L.snap = +v; });
+      const cat = targetCat();
+      body.append(h('div', { class: 'btns' },
+        btn('Posadź kota na obiekcie', () => { if (cat) seatCat(cat, L); else toast('Brak kota w scenie'); }),
+        ...state.scene.layers.filter(c => c.parent === L.id).map(c => btn('Zdejmij: ' + c.name, () => { detach(c); commit(); rebuild(); requestRender(); }))));
+      propsForm(body, L);
+    }
+  }
+
+  function buildBg(body) {
+    const bg = state.scene.bg;
+    select(body, 'Rodzaj', [['asphalt', 'Ziarnisty asfalt'], ['solid', 'Jednolity kolor'], ['gradient', 'Gradient'], ['neon', 'Siatka neon'],
+      ['transparent', 'Przezroczyste'], ['image', 'Własny obraz']], () => bg.mode, v => { bg.mode = v; }, true);
+    if (bg.mode === 'solid') color(body, 'Kolor', () => bg.color, v => { bg.color = v; });
+    if (bg.mode === 'gradient') {
+      color(body, 'Kolor 1', () => bg.color, v => { bg.color = v; });
+      color(body, 'Kolor 2', () => bg.color2, v => { bg.color2 = v; });
+      range(body, 'Kąt', 0, 360, 1, () => bg.angle, v => { bg.angle = v; }, v => Math.round(v) + '°');
+    }
+    if (bg.mode === 'neon') color(body, 'Kolor linii', () => bg.color, v => { bg.color = v; });
+    if (bg.mode === 'asphalt') body.append(btn('Nowy wzór szumu', () => { bg.seed = (Math.random() * 1e6) | 0; requestRender(); commit(); }));
+    if (bg.mode === 'transparent') body.append(h('div', { class: 'note' }, 'W edytorze widać szachownicę; eksport będzie miał przezroczyste tło.'));
+    if (bg.mode === 'image') {
+      const file = h('input', { type: 'file', accept: 'image/*' });
+      file.addEventListener('change', () => { if (file.files[0]) loadBgFile(file.files[0]); });
+      body.append(h('label', { class: 'row' }, h('span', { class: 'lbl' }, 'Plik'), file));
+      select(body, 'Dopasowanie', [['cover', 'Wypełnij (cover)'], ['contain', 'Zmieść (contain)']], () => bg.fit, v => { bg.fit = v; }, true);
+      if (bg.fit === 'contain') color(body, 'Kolor pod spodem', () => bg.color, v => { bg.color = v; });
+    }
+  }
+
+  function buildExport(body) {
+    body.append(h('div', { class: 'btns' }, btn(state.areaMode ? 'Zakończ wybór obszaru' : 'Wybierz obszar', () => setAreaMode(!state.areaMode), state.areaMode ? 'on' : '')));
+    select(body, 'Proporcje', [['free', 'Swobodne'], ['1:1', '1:1 (PFP)'], ['4:5', '4:5'], ['16:9', '16:9'], ['3:4', '3:4']],
+      () => state.ui.ratio, v => { state.ui.ratio = v; applyRatio(); });
+    select(body, 'Rozdzielczość', [['512', '512 px (dłuższy bok)'], ['1024', '1024 px (dłuższy bok)'], ['2048', '2048 px (dłuższy bok)'],
+      ['x1', '×1'], ['x2', '×2'], ['x4', '×4']], () => state.ui.res, v => { state.ui.res = v; updateExport(); scheduleSave(); });
+    check(body, 'Przezroczyste tło', () => state.ui.transparent, v => { state.ui.transparent = v; scheduleSave(); });
+    body.append(h('div', { class: 'row' }, h('span', { class: 'lbl' }, 'Wynik'), h('span', { class: 'dims', id: 'expDims' })));
+    body.append(h('div', { class: 'note', id: 'expNote' }));
+    body.append(btn('Eksportuj PNG', exportPNG, 'accent'));
+  }
+
+  /* ---- rejestr sekcji ---- */
+  function addSection(id, title, open, build) {
+    const body = h('div', { class: 'body' }), d = h('details', open ? { open: true } : null, h('summary', null, title), body);
+    panel.append(d); sections.push({ id, body, build });
+  }
+  function rebuild() {
+    syncers.length = 0;
+    for (const s of sections) { s.body.replaceChildren(); s.build(s.body); }
+    updateExport();
+  }
+  function sync() { for (const f of syncers) f(); updateExport(); }
+  function updateHistory() {
+    $('bUndo').disabled = hist.idx <= 0; $('bRedo').disabled = hist.idx >= hist.stack.length - 1;
+  }
+  function updateExport() {
+    const d = $('expDims'), n = $('expNote'); if (!d) return;
+    const o = outputSize(), e = state.exp;
+    d.textContent = `${o.w} × ${o.h} px`;
+    n.textContent = `Obszar: ${Math.round(e.w)} × ${Math.round(e.h)} jedn. sceny` + (state.areaMode ? '' : ' (kliknij "Wybierz obszar", aby zmienić)');
+    $('bArea').classList.toggle('on', state.areaMode);
+  }
+  function init() {
+    addSection('cat', 'Kot', true, buildCat);
+    addSection('layers', 'Warstwy', true, buildLayers);
+    addSection('acc', 'Akcesoria', false, buildAcc);
+    addSection('veh', 'Obiekty', false, buildVeh);
+    addSection('bg', 'Tło', false, buildBg);
+    addSection('exp', 'Eksport', true, buildExport);
+    rebuild();
+  }
+  return { init, rebuild, sync, updateHistory, updateExport };
+})();
+
+function loadBgFile(file) {
+  const fr = new FileReader();
+  fr.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, 2400 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      const id = 'img' + Date.now();
+      registerImage(id, c.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.9));
+      state.scene.bg.imageId = id; state.scene.bg.mode = 'image';
+      commit(); UI.rebuild(); requestRender();
+    };
+    img.onerror = () => toast('Nie udało się wczytać obrazu');
+    img.src = fr.result;
+  };
+  fr.readAsDataURL(file);
+}
+
+/* =====================================================================
+   INIT
+   ===================================================================== */
+function resetScene() {
+  state.scene = defaultScene(); state.sel = null; state.lastCatId = state.scene.layers[0].id; anims.clear();
+  state.exp = { x: -330, y: -330, w: 660, h: 660 }; state.ui.ratio = '1:1';
+  hist.stack = []; hist.idx = -1; commit();
+  UI.rebuild(); fitView(state.exp); select(state.lastCatId);
+}
+function wireTopBar() {
+  $('bUndo').onclick = undo; $('bRedo').onclick = redo;
+  $('bZoomIn').onclick = () => zoomAt(cv.clientWidth / 2, cv.clientHeight / 2, view.z * 1.25);
+  $('bZoomOut').onclick = () => zoomAt(cv.clientWidth / 2, cv.clientHeight / 2, view.z / 1.25);
+  $('bFit').onclick = () => fitView(state.exp);
+  $('bArea').onclick = () => setAreaMode(!state.areaMode);
+  $('bExportTop').onclick = exportPNG;
+  $('bNew').onclick = () => { if (confirm('Rozpocząć nową scenę? Bieżąca scena zostanie usunięta.')) resetScene(); };
+}
+function init() {
+  const restored = loadSaved();
+  if (!restored) state.scene = defaultScene();
+  state.scene.counters = state.scene.counters || {};
+  const firstCat = state.scene.layers.find(l => l.type === 'cat');
+  state.lastCatId = firstCat ? firstCat.id : null;
+  state.sel = state.lastCatId;
+  wireTopBar(); UI.init(); resize();
+  new ResizeObserver(resize).observe(cv);
+  commit();
+  if (!restored) fitView(state.exp);
+  window.__pfp = { state, view, hist, jointHandles, selLayer, outputSize, evalCat, boneTip, layerMatrix, w2s }; // diagnostyka
+}
+init();
+
+})();
+</script>
+</body>
+</html>
