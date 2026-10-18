@@ -35,6 +35,16 @@ button.sm{padding:3px 7px;font-size:12px}
 #hint{position:absolute;left:10px;bottom:8px;color:var(--dim);font-size:11px;pointer-events:none;text-shadow:0 1px 2px #000}
 #toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:#0f1f15;border:1px solid var(--accent2);color:var(--text);padding:7px 14px;border-radius:20px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:80%;text-align:center}
 #toast.show{opacity:1}
+#expProg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(3,6,4,.55);opacity:0;pointer-events:none;transition:opacity .2s;z-index:5}
+#expProg.show{opacity:1;pointer-events:auto;transition:none}
+#expProg .pbox{width:min(340px,86%);background:var(--panel);border:1px solid var(--accent2);border-radius:12px;padding:16px 18px;box-shadow:0 0 30px rgba(0,255,64,.18)}
+#expProg .phd{display:flex;justify-content:space-between;font-weight:700;color:var(--accent);margin-bottom:6px}
+#expProgPct{font-variant-numeric:tabular-nums}
+#expProgTxt{color:var(--text);margin-bottom:10px;min-height:1.3em}
+#expProg .ptrack{height:10px;border-radius:6px;background:#1a241e;overflow:hidden}
+#expProgBar{height:100%;width:0;border-radius:6px;background:repeating-linear-gradient(45deg,var(--accent) 0 10px,#4dff74 10px 20px);background-size:28px 28px;box-shadow:0 0 10px rgba(0,255,64,.6);animation:pstripes .8s linear infinite}
+@keyframes pstripes{to{background-position:28px 0}}
+#expProgSub{color:var(--dim);font-size:12px;margin-top:8px}
 #panel{width:350px;max-width:100%;overflow-y:auto;background:var(--panel);border-left:1px solid var(--line)}
 details{border-bottom:1px solid var(--line)}
 summary{cursor:pointer;padding:10px 12px;font-weight:600;color:var(--accent);list-style:none;user-select:none;display:flex;align-items:center;gap:8px}
@@ -96,6 +106,14 @@ details[open]>summary::before{transform:rotate(45deg)}
       <canvas id="gl"></canvas>
       <canvas id="ov" tabindex="0"></canvas>
       <div id="toast"></div>
+      <div id="expProg" role="status" aria-live="polite">
+        <div class="pbox">
+          <div class="phd"><span>Eksport PNG</span><span id="expProgPct">0%</span></div>
+          <div id="expProgTxt">Przygotowanie…</div>
+          <div class="ptrack"><div id="expProgBar"></div></div>
+          <div id="expProgSub"></div>
+        </div>
+      </div>
       <div id="hint">Przeciągnij tło: obrót &middot; Prawy przycisk/Spacja: przesuń &middot; Kółko: zoom &middot; Shift+przeciągnij obiekt: wysokość &middot; Q/E: obrót &middot; Delete: usuń &middot; Ctrl+D: duplikuj</div>
     </div>
     <aside id="panel"></aside>
@@ -1641,6 +1659,7 @@ function defaultFrame() {
 }
 function frame(now) {
   raf = 0;
+  if (exporting) { dirty = true; return; }   // podgląd wstrzymany na czas eksportu
   const animating = stepAnims(now);
   const live = state.ui.animate && envState && envState.update;
   if (fitRenderer()) dirty = true;
@@ -1774,24 +1793,74 @@ function setAreaMode(on) {
   if (on) toast('Przeciągnij na scenie, aby zaznaczyć obszar eksportu');
 }
 const stamp = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`; };
-function exportPNG() {
-  const o = outputSize(), f = state.frame, transparent = state.ui.transparent;
+/* ---- postęp eksportu: etapy + pasek (render blokuje wątek, kodowanie PNG jest asynchroniczne) ---- */
+const ExportProgress = (() => {
+  const el = $('expProg'), bar = $('expProgBar'), txt = $('expProgTxt'), pct = $('expProgPct'), sub = $('expProgSub');
+  let cur = 0, target = 0, raf = 0, hideTimer = 0;
+  function animate() {
+    cancelAnimationFrame(raf);
+    const step = () => {
+      cur += (target - cur) * 0.25; if (Math.abs(target - cur) < 0.3) cur = target;
+      bar.style.width = cur + '%'; pct.textContent = Math.round(cur) + '%';
+      if (cur !== target) raf = requestAnimationFrame(step);
+    };
+    step();
+  }
+  function set(p, label) { target = Math.max(target, p); if (target >= 100) cur = 100; if (label) txt.textContent = label; animate(); }
+  function show(info) { clearTimeout(hideTimer); cur = target = 0; sub.textContent = info; set(0, 'Przygotowanie…'); el.classList.add('show'); }
+  // powolne zbliżanie się do `to`, dopóki trwa operacja o nieznanym czasie
+  function creep(from, to, ms) {
+    const t0 = performance.now(), id = setInterval(() => set(from + (to - from) * (1 - Math.exp(-(performance.now() - t0) / ms))), 80);
+    return () => clearInterval(id);
+  }
+  function hide(delay) { hideTimer = setTimeout(() => el.classList.remove('show'), delay); }
+  return { show, set, creep, hide };
+})();
+let exporting = false;
+const nextPaint = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+function setExportBusy(on) { for (const id of ['bExportTop', 'bExportPanel']) { const b = $(id); if (b) b.disabled = on; } }
+function downloadBlob(blob) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `pfp-${stamp()}.png`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+// render kadru w docelowej rozdzielczości; toBlob kopiuje obraz od razu, więc stan można przywrócić natychmiast
+function renderExportBlob(o) {
+  const f = state.frame, transparent = state.ui.transparent;
   syncAll(); updateCamera();
-  const saveBg = scene.fog, saveVis = envGroup.visible;
+  const saveFog = scene.fog, saveVis = envGroup.visible;
   camera.aspect = viewW / viewH; camera.setViewOffset(viewW, viewH, f.x, f.y, f.w, f.h); camera.updateProjectionMatrix();
   renderer.setSize(o.w, o.h, false);
   fx.radius = state.scene.env.radius; fx.gain = state.scene.env.gain; fx.transparent = transparent;
   if (transparent) { envGroup.visible = false; scene.fog = null; }
   renderPipeline(o.w, o.h, viewH / f.h);
-  glCanvas.toBlob(blob => {
-    if (blob) {
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `pfp-${stamp()}.png`;
-      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast(`Zapisano ${o.w} × ${o.h} px`);
-    } else toast('Eksport nie powiódł się');
-  }, 'image/png');
-  envGroup.visible = saveVis; scene.fog = saveBg; fx.transparent = false;
+  ExportProgress.set(60, 'Kodowanie PNG…');
+  const stopCreep = ExportProgress.creep(60, 95, Math.max(500, o.w * o.h / 1e6 * 900));
+  const p = new Promise(res => glCanvas.toBlob(b => { stopCreep(); res(b); }, 'image/png'));
+  envGroup.visible = saveVis; scene.fog = saveFog; fx.transparent = false;
   camera.clearViewOffset(); camera.updateProjectionMatrix();
   sizeKey = ''; requestRender();
+  return p;
+}
+async function exportPNG() {
+  if (exporting) return;
+  exporting = true; setExportBusy(true);
+  const o = outputSize(), t0 = performance.now();
+  ExportProgress.show(`${o.w} \u00d7 ${o.h} px` + (state.ui.transparent ? ' \u00b7 przezroczyste tło' : ''));
+  try {
+    ExportProgress.set(8, 'Przygotowanie sceny…'); await nextPaint();
+    ExportProgress.set(25, `Renderowanie ${o.w} \u00d7 ${o.h} px (scena + poświata)…`); await nextPaint();
+    const blob = await renderExportBlob(o);
+    if (!blob) throw new Error('toBlob');
+    ExportProgress.set(97, 'Zapisywanie pliku…'); await nextPaint();
+    downloadBlob(blob);
+    ExportProgress.set(100, `Gotowe! ${(blob.size / 1024 / 1024).toFixed(2)} MB w ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+    toast(`Zapisano ${o.w} \u00d7 ${o.h} px`);
+  } catch (e) {
+    ExportProgress.set(100, 'Eksport nie powiódł się');
+    toast('Eksport nie powiódł się');
+  } finally {
+    exporting = false; setExportBusy(false); ExportProgress.hide(1600); requestRender();
+  }
 }
 
 /* =====================================================================
@@ -2175,7 +2244,7 @@ const UI = (() => {
     check(body, 'Przezroczyste tło', () => state.ui.transparent, v => { state.ui.transparent = v; scheduleSave(); }, false, true);
     body.append(h('div', { class: 'row' }, h('span', { class: 'lbl' }, 'Wynik'), h('span', { class: 'dims', id: 'expDims' })));
     body.append(h('div', { class: 'note', id: 'expNote' }));
-    body.append(btn('Eksportuj PNG', exportPNG, 'accent'));
+    const eb = btn('Eksportuj PNG', exportPNG, 'accent'); eb.id = 'bExportPanel'; eb.disabled = exporting; body.append(eb);
   }
 
   function addSection(id, title, open, build) {
