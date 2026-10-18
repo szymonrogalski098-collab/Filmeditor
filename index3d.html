@@ -166,9 +166,9 @@ const BONE_DEFS = (() => {
     ['head', 'neck', [0, 30.4, 3.4], [0, 35.2, 6.4], 75],
     ['earL', 'head', [3.4, 37.9, 5.2], [5.0, 44.2, 4.9], 70],
     ['earR', 'head', [-3.4, 37.9, 5.2], [-4.2, 45.6, 4.7], 70],
-    ['tail1', 'root', [0, 6, -12.2], [-4.6, 4.6, -18], 85],
-    ['tail2', 'tail1', [-4.6, 4.6, -18], [-13, 3.2, -19.6], 90],
-    ['tail3', 'tail2', [-13, 3.2, -19.6], [-21, 6.2, -12.6], 100]
+    ['tail1', 'root', [0, 5, -12], [-5, 3.4, -19], 85],
+    ['tail2', 'tail1', [-5, 3.4, -19], [-14, 2.6, -21.5], 90],
+    ['tail3', 'tail2', [-14, 2.6, -21.5], [-25, 5, -18], 100]
   ];
   for (const [s, n] of [[1, 'L'], [-1, 'R']]) {
     d.push([`frontLeg${n}_upper`, 'torso', [s * 3.2, 22.5, 1.5], [s * 3.2, 12.5, 3.2], 80]);
@@ -198,7 +198,7 @@ const IK_CHAINS = {
 /* Materiały kota: ciało półprzezroczyste + prepass głębi (jednolita alfa) */
 function makeCatMaterials() {
   const body = new T.MeshStandardMaterial({
-    color: '#a9e8b8', emissive: '#a9e8b8', emissiveIntensity: 0.62, roughness: 0.55, metalness: 0,
+    color: '#a9e8b8', emissive: '#a9e8b8', emissiveIntensity: 0.72, roughness: 0.55, metalness: 0,
     flatShading: true, transparent: true, opacity: 0.85, depthWrite: false, fog: false
   });
   const inner = body.clone();
@@ -236,28 +236,28 @@ function buildCatRig() {
   const limb = (bone, a, b, r0, r1, seg = 6) => { const l = limbGeo(V3(...a), V3(...b), r0, r1, seg); return part(bone, l.geo, l.pos, l.quat); };
   const alignQ = (from, to) => new T.Quaternion().setFromUnitVectors(V3(...from).normalize(), V3(...to).normalize());
 
-  // tułów
-  blob('root', [0, 10.5, -7.6], [4.9, 5.7, 6.6], 2);
-  blob('torso', [0, 18.5, -3.2], [4.2, 9.2, 5.0], 2);
-  blob('torso', [0, 23.6, 0.2], [4.3, 4.8, 4.5], 2);
-  limb('neck', [0, 25.5, 0.6], [0, 31, 4], 2.9, 2.3, 7);
-  // głowa
-  blob('head', [0, 35.2, 6.3], [5.5, 4.6, 5.0], 2, 0.05);
-  blob('head', [3.1, 34.0, 8.0], [2.6, 2.2, 2.5], 1, 0.05);
-  blob('head', [-3.1, 34.0, 8.0], [2.6, 2.2, 2.5], 1, 0.05);
-  blob('head', [0, 33.3, 9.7], [2.3, 1.9, 2.0], 1, 0.04);
-  for (const s of [1, -1]) part('head', blobGeo(0.85, 1.2, 0.45, 1, 0.02), V3(s * 2.65, 36, 10.7), alignQ([0, 0, 1], [s * 0.25, 0, 1]), 'face');
-  part('head', blobGeo(0.75, 0.52, 0.45, 1, 0.02), V3(0, 34.3, 11.72), null, 'face');
-  // pysk: odwrócone, lekko zaokrąglone V (∧)
-  const mouth = new T.CatmullRomCurve3([V3(-1.6, 32.4, 11.0), V3(-0.75, 33.0, 11.6), V3(0, 33.3, 11.8), V3(0.75, 33.0, 11.6), V3(1.6, 32.4, 11.0)], false, 'catmullrom', 0.5);
-  part('head', new T.TubeGeometry(mouth, 16, 0.17, 5, false), V3(0, 0, 0), null, 'face');
-  // uszy: trójkątne stożki
+  // tułów: "dzwon" z kilku dużych płaskich ścian (szeroka podstawa, brak widocznej szyi)
+  blob('root', [0, 10.2, -7.4], [6.0, 6.4, 7.0], 1, 0.1);
+  blob('torso', [0, 18.0, -3.2], [5.5, 9.6, 5.9], 1, 0.09);
+  blob('torso', [0, 24.4, 0.4], [4.7, 5.3, 4.7], 1, 0.08);
+  blob('neck', [0, 28.2, 2.4], [3.7, 3.4, 3.5], 1, 0.06);
+  // głowa: mała, z wysuniętym pyszczkiem
+  blob('head', [0, 35.2, 6.3], [4.9, 4.2, 4.4], 1, 0.07);
+  blob('head', [2.3, 34.0, 7.9], [2.3, 1.9, 2.2], 1, 0.05);
+  blob('head', [-2.3, 34.0, 7.9], [2.3, 1.9, 2.2], 1, 0.05);
+  blob('head', [0, 33.2, 9.5], [1.9, 1.5, 2.4], 1, 0.04);
+  for (const s of [1, -1]) part('head', blobGeo(0.6, 0.85, 0.35, 1, 0.02), V3(s * 2.4, 35.9, 10.1), alignQ([0, 0, 1], [s * 0.3, 0, 1]), 'face');
+  part('head', blobGeo(0.55, 0.4, 0.35, 1, 0.02), V3(0, 34.0, 11.7), null, 'face');
+  // pysk: małe, lekko zaokrąglone odwrócone V (∧)
+  const mouth = new T.CatmullRomCurve3([V3(-1.25, 32.4, 10.95), V3(-0.6, 32.9, 11.5), V3(0, 33.1, 11.8), V3(0.6, 32.9, 11.5), V3(1.25, 32.4, 10.95)], false, 'catmullrom', 0.5);
+  part('head', new T.TubeGeometry(mouth, 16, 0.14, 5, false), V3(0, 0, 0), null, 'face');
+  // uszy: małe, spiczaste
   for (const [n, s] of [['earL', 1], ['earR', -1]]) {
-    const b = BONES[n], dir = b.dir0, h = b.len, q = alignQ([0, 1, 0], [dir.x, dir.y, dir.z]);
-    const out = new T.ConeGeometry(2.8, h * 0.95, 3, 1); out.translate(0, h * 0.475, 0); out.scale(1, 1, 0.45);
+    const b = BONES[n], dir = b.dir0, h = b.len * 0.9, q = alignQ([0, 1, 0], [dir.x, dir.y, dir.z]);
+    const out = new T.ConeGeometry(2.3, h, 3, 1); out.translate(0, h / 2, 0); out.scale(1, 1, 0.45);
     part(n, out, b.joint.clone(), q);
-    const inn = new T.ConeGeometry(1.65, h * 0.72, 3, 1); inn.translate(0, h * 0.36, 0); inn.scale(1, 1, 0.4);
-    part(n, inn, b.joint.clone().add(V3(s * -0.05, 0.1, 0.35)), q, 'inner');
+    const inn = new T.ConeGeometry(1.35, h * 0.7, 3, 1); inn.translate(0, h * 0.35, 0); inn.scale(1, 1, 0.4);
+    part(n, inn, b.joint.clone().add(V3(s * -0.05, 0.1, 0.3)), q, 'inner');
   }
   // przednie łapy
   for (const [s, n] of [[1, 'L'], [-1, 'R']]) {
@@ -266,13 +266,13 @@ function buildCatRig() {
     limb(`frontLeg${n}_lower`, [s * 3.2, 12.5, 3.2], [s * 3.2, 3.4, 5.2], 1.5, 1.15);
     blob(`frontLeg${n}_paw`, [s * 3.2, 1.4, 7], [1.65, 1.25, 3.1], 1, 0.06);
     // tylne łapy: udo + goleń + stopa
-    blob(`hindLeg${n}_upper`, [s * 5.3, 8.2, -4.6], [2.7, 5.0, 4.3], 2, 0.06, alignQ([0, 1, 0], [s * 0.15, 0.25, 0.9]));
+    blob(`hindLeg${n}_upper`, [s * 5.0, 8.2, -4.6], [3.0, 5.2, 4.5], 1, 0.09, alignQ([0, 1, 0], [s * 0.15, 0.25, 0.9]));
     limb(`hindLeg${n}_lower`, [s * 6.2, 4.2, -0.8], [s * 5.4, 1.8, -6.4], 1.25, 0.95);
     blob(`hindLeg${n}_lower`, [s * 5.4, 1.8, -6.4], [1.15, 1.1, 1.15], 1, 0.05);
-    blob(`hindLeg${n}_paw`, [s * 5.4, 0.9, -1.8], [1.5, 1.0, 4.1], 1, 0.06);
+    blob(`hindLeg${n}_paw`, [s * 5.4, 0.9, -1.2], [1.5, 1.0, 3.4], 1, 0.06);
   }
   // ogon
-  const tailR = [[1.55, 1.3], [1.3, 1.1], [1.1, 0.85]];
+  const tailR = [[1.15, 0.95], [0.95, 0.8], [0.8, 0.6]];
   ['tail1', 'tail2', 'tail3'].forEach((n, i) => {
     const b = BONES[n];
     limb(n, b.joint.toArray(), b.tip.toArray(), tailR[i][0], tailR[i][1], 6);
@@ -375,7 +375,7 @@ function sitSpec() {
     s.torso = { d: PD(Y, 0.62, 1) };
     s.neck = { d: PD(Y, 0.35, 1) };
     s.head = { abs: [8, 4, 32] };
-    s.earL = { e: [0, 0, -6] }; s.earR = { e: [0, 0, 44] };
+    s.earL = { e: [0, 0, -6] }; s.earR = { e: [0, 0, 24] };
     legs(s, Y, [0.3, 0.55, 1], [-1, -1, -0.35]);
     const Rt = [-L[0], 0, -L[2]];
     s.tail1 = { d: mixv([F, -1], [Rt, 0.25], [[0, 1, 0], -0.12]) };
@@ -430,6 +430,14 @@ const POSE_SPECS = {
     s.head = { abs: [4, 4, 22] };
     return s;
   })(),
+  lookUp: (() => {
+    const Y = 35, F = fwd(Y), s = { root: { r: [0, Y, 0] } };
+    s.torso = { d: [F[0] * 0.3, 1, 0.2] }; s.neck = { d: [F[0] * 0.1, 1, 0.1] }; s.head = { abs: [-24, -25, 8] };
+    s.earL = { e: [0, 0, -4] }; s.earR = { e: [0, 0, 12] };
+    legs(s, Y, [0.05, 0.05, 0.9], [-1, -1, -0.4]);
+    s.tail1 = { d: [1, -0.05, -0.3] }; s.tail2 = { d: [1, 0.05, -0.12] }; s.tail3 = { d: [1, 0.25, 0.08] };
+    return s;
+  })(),
   curl: (() => {
     const Y = 70, F = fwd(Y), L = LV(Y), s = { root: { r: [0, Y, 0], p: [0, -4, 0] } };
     s.torso = { d: mixv([F, 1], [[0, 1, 0], 0.15]) }; s.neck = { d: mixv([F, 0.35], [L, 0.85], [[0, 1, 0], 0.5]) };
@@ -441,7 +449,7 @@ const POSE_SPECS = {
   })()
 };
 const POSES = {}; for (const k in POSE_SPECS) POSES[k] = poseFromSpec(POSE_SPECS[k]);
-const POSE_LABELS = [['sit', 'Siedzi'], ['stand', 'Stoi'], ['lie', 'Leży'], ['jump', 'Skacze'], ['stretch', 'Wyciąga się'], ['tailUp', 'Ogon w górze'], ['curl', 'Kuli się']];
+const POSE_LABELS = [['sit', 'Siedzi'], ['stand', 'Stoi'], ['lie', 'Leży'], ['jump', 'Skacze'], ['stretch', 'Wyciąga się'], ['tailUp', 'Ogon w górze'], ['curl', 'Kuli się'], ['lookUp', 'Patrzy w górę']];
 
 /* =====================================================================
    RENDERER: scena -> RT, poświata (maska + rozmycie wieloskalowe), kompozyt
