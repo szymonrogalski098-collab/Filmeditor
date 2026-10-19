@@ -35,6 +35,30 @@ button.sm{padding:3px 7px;font-size:12px}
 #hint{position:absolute;left:10px;bottom:8px;color:var(--dim);font-size:11px;pointer-events:none;text-shadow:0 1px 2px #000}
 #toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:#0f1f15;border:1px solid var(--accent2);color:var(--text);padding:7px 14px;border-radius:20px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:80%;text-align:center}
 #toast.show{opacity:1}
+#legoBar{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:none;flex-direction:column;gap:6px;background:rgba(15,21,17,.92);border:1px solid var(--line);border-radius:14px;padding:8px;z-index:4;max-width:calc(100% - 16px)}
+#legoBar.show{display:flex}
+#legoBar .lrow{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap}
+#legoBar button{min-height:44px;min-width:64px;font-weight:600}
+#legoBar .lcur{display:flex;align-items:center;gap:6px;padding:0 6px;color:var(--text);max-width:150px}
+#legoCur{width:26px;height:26px;border-radius:6px;border:2px solid #fff;flex:0 0 26px}
+#legoCurName{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#legoBar .lhint{font-size:11px;color:var(--dim);text-align:center}
+.lgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.lgrid button{padding:3px;display:flex;flex-direction:column;align-items:center;font-size:10.5px;gap:2px}
+.lgrid img{width:60px;height:60px;border-radius:6px}
+.lgrid button.on,.lcols button.on,.ltabs button.on{box-shadow:inset 0 0 0 2px var(--accent);border-color:var(--accent)}
+.lcols{display:grid;grid-template-columns:repeat(10,1fr);gap:4px}
+.lcols button{height:28px;padding:0;border-radius:6px;border:1px solid #0006}
+.ltabs{display:flex;flex-wrap:wrap;gap:4px}
+.ltabs button{padding:5px 8px;font-size:12px}
+@media (max-width:820px){
+  #legoBar{flex-direction:row;bottom:6px;padding:5px;gap:4px;overflow-x:auto;max-width:calc(100% - 10px);border-radius:12px}
+  #legoBar .lrow{flex-wrap:nowrap;gap:4px}
+  #legoBar button{min-width:52px;min-height:42px;padding:4px 7px;font-size:12px}
+  #legoBar .lhint,#legoCurName{display:none}
+  body.lego-on #panel{height:36vh}
+  .lgrid img{width:52px;height:52px} .lcols{grid-template-columns:repeat(7,1fr)} .lcols button{height:34px}
+}
 #expProg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(3,6,4,.55);opacity:0;pointer-events:none;transition:opacity .2s;z-index:5}
 #expProg.show{opacity:1;pointer-events:auto;transition:none}
 #expProg .pbox{width:min(340px,86%);background:var(--panel);border:1px solid var(--accent2);border-radius:12px;padding:16px 18px;box-shadow:0 0 30px rgba(0,255,64,.18)}
@@ -96,6 +120,7 @@ details[open]>summary::before{transform:rotate(45deg)}
       <button id="bFit" title="Reset kamery (0)">Reset kamery</button>
     </div>
     <div class="grp right">
+      <button id="bLego" title="Budowanie z klocków LEGO">LEGO</button>
       <button id="bNew">Nowa scena</button>
       <button id="bArea">Wybierz obszar</button>
       <button id="bExportTop" class="accent">Eksportuj PNG</button>
@@ -106,6 +131,21 @@ details[open]>summary::before{transform:rotate(45deg)}
       <canvas id="gl"></canvas>
       <canvas id="ov" tabindex="0"></canvas>
       <div id="toast"></div>
+      <div id="legoBar">
+        <div class="lrow">
+          <button data-tool="place" title="Postaw (1)">Postaw</button>
+          <button data-tool="erase" title="Usuń (2)">Usuń</button>
+          <button data-tool="paint" title="Maluj (3)">Maluj</button>
+          <button data-tool="pick" title="Pipeta (4)">Pipeta</button>
+        </div>
+        <div class="lrow">
+          <button data-act="rot" title="Obróć (R)">Obróć</button>
+          <span class="lcur"><span id="legoCur"></span><span id="legoCurName"></span></span>
+          <button data-act="undo" title="Cofnij (Ctrl+Z)">Cofnij</button>
+          <button data-act="exit" class="accent" title="Zakończ budowanie (Esc)">Gotowe</button>
+        </div>
+        <div class="lhint">Tap/klik: akcja &middot; przeciągnij: obrót kamery &middot; klocków: <b id="legoCount">0</b></div>
+      </div>
       <div id="expProg" role="status" aria-live="polite">
         <div class="pbox">
           <div class="phd"><span>Eksport PNG</span><span id="expProgPct">0%</span></div>
@@ -1324,7 +1364,8 @@ const SCENES = {
    ===================================================================== */
 const state = {
   scene: null, sel: null, lastCatId: null, areaMode: false, frame: null,
-  ui: { handles: true, ik: false, free: false, ratio: '1:1', res: '1024', transparent: false, animate: true }
+  ui: { handles: true, ik: false, free: false, ratio: '1:1', res: '1024', transparent: false, animate: true, legoShow: true,
+    lego: { mode: false, tool: 'place', type: 'b2x4', color: '#C91A09', rot: 0, cat: 'Klocki' } }
 };
 const ratioValue = { free: null, '1:1': 1, '4:5': 0.8, '16:9': 16 / 9, '3:4': 0.75 };
 const findLayer = id => state.scene.layers.find(l => l.id === id) || null;
@@ -1341,7 +1382,7 @@ function makeCat(s) {
   };
 }
 function defaultScene() {
-  const s = { v: 1, nextId: 1, counters: {}, layers: [], env: { id: 'neon', radius: 30, gain: 0.85 } };
+  const s = { v: 1, nextId: 1, counters: {}, layers: [], env: { id: 'neon', radius: 30, gain: 0.85 }, lego: { base: { on: false, size: 48, color: '#237841' }, bricks: [] } };
   s.layers.push(makeCat(s)); return s;
 }
 function makeVeh(kind, variant) {
@@ -1480,7 +1521,7 @@ function commit() {
 }
 function loadSnapshot(s) {
   const prevEnv = state.scene.env.id;
-  state.scene = JSON.parse(s); anims.clear();
+  state.scene = JSON.parse(s); anims.clear(); legoDirty = true;
   if (state.scene.env.id !== prevEnv) setEnv(state.scene.env.id, false);
   if (state.sel != null && !selLayer()) state.sel = null;
   UI.rebuild(); UI.updateHistory(); requestRender(); scheduleSave();
@@ -1499,7 +1540,10 @@ function loadSaved() {
   try {
     const d = JSON.parse(lsGet(LS_SCENE) || 'null');
     if (!d || !d.scene || !Array.isArray(d.scene.layers) || !d.scene.env) return false;
+    const legoUi = state.ui.lego;
     state.scene = d.scene; if (d.ui) Object.assign(state.ui, d.ui); if (d.frame) state.frame = d.frame;
+    state.ui.lego = Object.assign(legoUi, state.ui.lego || {}, { mode: false });
+    if (!LEGO_TYPES[state.ui.lego.type]) state.ui.lego.type = 'b2x4';
     if (d.cam) setCameraTo(d.cam);
     for (const L of state.scene.layers) if (L.type === 'cat') L.pose = normalizePose(L.pose);
     return true;
@@ -1667,6 +1711,7 @@ function frame(now) {
   if (!dirty && !animating && !live) return;
   dirty = false;
   updateCamera(); syncAll();
+  if (legoDirty) rebuildLego();
   fx.radius = state.scene.env.radius; fx.gain = state.scene.env.gain; fx.transparent = false;
   renderPipeline(Math.round(viewW * dpr), Math.round(viewH * dpr), 1);
   drawOverlay();
@@ -1739,6 +1784,7 @@ function drawArea(c) {
 function drawOverlay() {
   const c = ovCtx; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, viewW, viewH);
   if (state.areaMode) { drawArea(c); return; }
+  if (state.ui.lego.mode) return;
   const L = selLayer(); if (!L || !L.visible || !RTL.get(L.id)) return;
   const r = layerScreenRect(L);
   if (r) {
@@ -1970,6 +2016,7 @@ ovCanvas.addEventListener('pointerdown', e => {
   const touch = e.pointerType !== 'mouse';
   if (e.button === 2 || e.button === 1 || spaceDown || (e.shiftKey && !selLayer())) { drag = { type: 'pan', sx, sy }; e.preventDefault(); return; }
   if (state.areaMode) { beginArea(sx, sy, touch); return; }
+  if (state.ui.lego.mode) { drag = { type: 'legoTap', sx, sy }; return; }
   const j = hitJoint(sx, sy, touch ? 20 : 11);
   if (j) { beginJoint(j, sx, sy); return; }
   const L = pickLayer(sx, sy);
@@ -1982,6 +2029,7 @@ ovCanvas.addEventListener('pointermove', e => {
   if (prev) pointers.set(e.pointerId, [sx, sy]);
   if (pinch) { movePinch(); return; }
   if (!drag) {
+    if (state.ui.lego.mode && e.pointerType === 'mouse') { updateGhost(sx, sy); return; }
     if (e.pointerType === 'mouse') {
       if (state.areaMode) { const h = hitArea(sx, sy, 10); ovCanvas.style.cursor = !h ? 'crosshair' : h === 'move' ? 'move' : 'pointer'; }
       else ovCanvas.style.cursor = hitJoint(sx, sy, 11) ? 'pointer' : spaceDown ? 'grab' : 'default';
@@ -1989,6 +2037,7 @@ ovCanvas.addEventListener('pointermove', e => {
     return;
   }
   const d = drag;
+  if (d.type === 'legoTap') { if (Math.hypot(sx - d.sx, sy - d.sy) < 8) return; d.type = 'orbit'; ghost.visible = false; }
   if (d.type === 'orbit' || d.type === 'pan') {
     const dx = sx - (prev ? prev[0] : sx), dy = sy - (prev ? prev[1] : sy);
     d.type === 'orbit' ? orbitBy(dx, dy) : panBy(dx, dy); requestRender(); return;
@@ -1999,6 +2048,7 @@ ovCanvas.addEventListener('pointermove', e => {
 function pointerEnd(e) {
   pointers.delete(e.pointerId);
   if (pinch) { if (pointers.size < 2) { pinch = null; scheduleSave(); } return; }
+  if (drag && drag.type === 'legoTap') { const d = drag; drag = null; legoAct(d.sx, d.sy); if (e.pointerType === 'mouse') updateGhost(d.sx, d.sy); return; }
   if (drag && drag.type === 'areaNew' && !drag.moved) state.frame = drag.prev;
   if (drag && drag.type && drag.type.startsWith('area')) { drag = null; requestRender(); return; }
   if (drag && (drag.type === 'orbit' || drag.type === 'pan')) { drag = null; scheduleSave(); return; }
@@ -2023,6 +2073,12 @@ window.addEventListener('keydown', e => {
   if (mod && k.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
   if (mod && k.toLowerCase() === 'd') { e.preventDefault(); if (L) duplicateLayer(L); return; }
   if ((k === 'Delete' || k === 'Backspace') && L) { e.preventDefault(); deleteLayer(L); return; }
+  if (state.ui.lego.mode && !mod) {
+    const lk = k.toLowerCase(), LT = { '1': 'place', '2': 'erase', '3': 'paint', '4': 'pick' };
+    if (lk === 'r') { state.ui.lego.rot = (state.ui.lego.rot + 1) % 4; ghostKey = ''; LegoBar.sync(); requestRender(); return; }
+    if (LT[lk]) { state.ui.lego.tool = LT[lk]; ghost.visible = false; LegoBar.sync(); requestRender(); return; }
+    if (k === 'Escape') { setLegoMode(false); return; }
+  }
   if (k === 'Escape') { if (state.areaMode) setAreaMode(false); else select(null); return; }
   if (k === '0') { setCameraTo(envState.cam); requestRender(); return; }
   if (k === '+' || k === '=') { zoomBy(1 / 1.2); requestRender(); return; }
@@ -2040,6 +2096,311 @@ window.addEventListener('keyup', e => {
 });
 window.addEventListener('resize', () => { requestRender(); });
 window.addEventListener('beforeunload', saveNow);
+
+/* =====================================================================
+   LEGO: katalog klocków, geometria, mapa (instancing), budowanie
+   Jednostki: 1 wypustka = LU, 1 płytka (plate) = LPH, klocek = 3 płytki
+   ===================================================================== */
+const LU = 4, LPH = 1.6, LGAP = 0.1;
+const LEGO_COLORS = [
+  ['Biały', '#F4F4F4'], ['Jasnoszary', '#A0A5A9'], ['Ciemnoszary', '#6C6E68'], ['Czarny', '#1B2A34'],
+  ['Czerwony', '#C91A09'], ['Ciemnoczerwony', '#720E0F'], ['Pomarańczowy', '#FE8A18'], ['Żółty', '#F2CD37'],
+  ['Piaskowy', '#E4CD9E'], ['Brązowy', '#582A12'], ['Limonkowy', '#BBE90B'], ['Zielony', '#237841'],
+  ['Ciemnozielony', '#184632'], ['Jasnoniebieski', '#9FC3E9'], ['Niebieski', '#0055BF'], ['Granatowy', '#0A3463'],
+  ['Turkusowy', '#36AEBF'], ['Różowy', '#FC97AC'], ['Magenta', '#923978'], ['Lawendowy', '#E1D5ED']
+];
+
+/* ---- scalanie geometrii (bez BufferGeometryUtils) ---- */
+function mergeGeos(list) {
+  const pos = [], nor = [], uv = [];
+  for (const g0 of list) {
+    const g = g0.index ? g0.toNonIndexed() : g0;
+    pos.push(...g.attributes.position.array); nor.push(...g.attributes.normal.array);
+    if (g.attributes.uv) uv.push(...g.attributes.uv.array); else for (let i = 0; i < g.attributes.position.count; i++) uv.push(0, 0);
+  }
+  const out = new T.BufferGeometry();
+  out.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); out.setAttribute('normal', new T.Float32BufferAttribute(nor, 3));
+  out.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); out.computeBoundingBox(); out.computeBoundingSphere();
+  return out;
+}
+const at = (g, x, y, z) => { g.translate(x, y, z); return g; };
+function studsGeo(w, d, topY) {
+  const list = [];
+  for (let i = 0; i < w; i++) for (let j = 0; j < d; j++) list.push(at(new T.CylinderGeometry(0.3 * LU, 0.3 * LU, 0.85, 14), (i + 0.5) * LU, topY + 0.425, (j + 0.5) * LU));
+  return list;
+}
+// zwykły klocek / płytka / gładka płytka: prostopadłościan + wypustki
+function boxBrickGeo(w, d, h, studs = true) {
+  const list = [at(new T.BoxGeometry(w * LU - LGAP, h * LPH - LGAP * 0.5, d * LU - LGAP), w * LU / 2, h * LPH / 2, d * LU / 2)];
+  if (studs) list.push(...studsGeo(w, d, h * LPH));
+  return mergeGeos(list);
+}
+
+/* ---- nadruki (naklejki) generowane na canvasie ---- */
+const decalCache = {};
+function decalTex(kind) {
+  if (decalCache[kind]) return decalCache[kind];
+  const draw = {
+    screen(x, w, h) {
+      const g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#1a6fd1'); g.addColorStop(1, '#5fc3ff'); x.fillStyle = '#111'; x.fillRect(0, 0, w, h);
+      x.fillStyle = g; x.fillRect(10, 10, w - 20, h - 20);
+      x.fillStyle = '#fff'; x.fillRect(26, 26, 90, 60); x.fillStyle = '#ffd23a'; x.fillRect(130, 40, 70, 46);
+      x.fillStyle = '#222'; for (let i = 0; i < 4; i++) x.fillRect(32, 36 + i * 12, 70 - i * 9, 5);
+      x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(10, h - 30, w - 20, 20);
+    },
+    tv(x, w, h) {
+      x.fillStyle = '#0c0c10'; x.fillRect(0, 0, w, h);
+      const g = x.createLinearGradient(0, 12, 0, h - 12); g.addColorStop(0, '#ff8a5c'); g.addColorStop(0.55, '#ffcf70'); g.addColorStop(0.56, '#2a4f86'); g.addColorStop(1, '#16304f');
+      x.fillStyle = g; x.fillRect(12, 12, w - 24, h - 24); x.fillStyle = '#fff1b0'; x.beginPath(); x.arc(w / 2, h * 0.5, 30, Math.PI, 0); x.fill();
+    },
+    pc(x, w, h) {
+      x.fillStyle = '#16171c'; x.fillRect(0, 0, w, h); x.fillStyle = '#2c2e36'; for (let i = 0; i < 6; i++) x.fillRect(20, 30 + i * 22, w - 40, 10);
+      x.fillStyle = '#00ff40'; x.beginPath(); x.arc(w / 2, h - 40, 12, 0, 7); x.fill(); x.fillStyle = '#b04dff'; x.fillRect(8, 8, 6, h - 16);
+    },
+    keys(x, w, h) {
+      x.fillStyle = '#1b1c22'; x.fillRect(0, 0, w, h); x.fillStyle = '#d8dce4';
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 14; c++) x.fillRect(8 + c * 17.6, 10 + r * 15, 14, 11);
+    },
+    poster(x, w, h) {
+      x.fillStyle = '#f4efe2'; x.fillRect(0, 0, w, h); x.fillStyle = '#e8483c'; x.fillRect(16, 16, w - 32, h * 0.62);
+      x.fillStyle = '#ffd23a'; x.beginPath(); x.arc(w / 2, h * 0.36, 34, 0, 7); x.fill();
+      x.fillStyle = '#1b2a34'; x.font = 'bold 34px sans-serif'; x.textAlign = 'center'; x.fillText('LEGO', w / 2, h - 30);
+    },
+    clock(x, w, h) {
+      x.fillStyle = '#f7f7f2'; x.fillRect(0, 0, w, h); x.strokeStyle = '#1b2a34'; x.lineWidth = 10; x.beginPath(); x.arc(w / 2, h / 2, w * 0.4, 0, 7); x.stroke();
+      x.lineWidth = 8; x.beginPath(); x.moveTo(w / 2, h / 2); x.lineTo(w / 2, h * 0.2); x.moveTo(w / 2, h / 2); x.lineTo(w * 0.72, h / 2); x.stroke();
+      for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; x.fillStyle = '#1b2a34'; x.fillRect(w / 2 + Math.cos(a) * w * 0.33 - 4, h / 2 + Math.sin(a) * h * 0.33 - 4, 8, 8); }
+    },
+    sign(x, w, h) {
+      x.fillStyle = '#0a3463'; x.fillRect(0, 0, w, h); x.fillStyle = '#fff'; x.font = 'bold 74px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('CAFE', w / 2, h / 2 + 4);
+    },
+    panel(x, w, h) {
+      x.fillStyle = '#6c6e68'; x.fillRect(0, 0, w, h); const cols = ['#c91a09', '#f2cd37', '#237841', '#0055bf'];
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) { x.fillStyle = cols[(r + c) % 4]; x.beginPath(); x.arc(40 + c * 58, 50 + r * 70, 18, 0, 7); x.fill(); }
+    }
+  }[kind];
+  const t = canvasTex(256, 256, draw); t.anisotropy = 4;
+  return (decalCache[kind] = t);
+}
+function decalPlane(w, d, h, face) {
+  if (face === 'top') { const g = new T.PlaneGeometry(w * LU * 0.9, d * LU * 0.86); g.rotateX(-Math.PI / 2); return at(g, w * LU / 2, h * LPH + 0.03, d * LU / 2); }
+  return at(new T.PlaneGeometry(w * LU * 0.86, h * LPH * 0.8), w * LU / 2, h * LPH / 2, d * LU - LGAP / 2 + 0.03);
+}
+
+/* ---- dekoracje (części: kolor gracza albo stały kolor) ---- */
+const DECOR = {
+  tree: () => [{ geo: at(new T.CylinderGeometry(1.3, 1.6, 9, 8), 4, 4.5, 4), color: '#582A12' }, { geo: at(blobGeo(6, 5.4, 6, 1, 0.12), 4, 14, 4) }],
+  pine: () => [{ geo: at(new T.CylinderGeometry(1.2, 1.5, 6, 8), 4, 3, 4), color: '#582A12' },
+    { geo: mergeGeos([at(new T.ConeGeometry(6.4, 9, 8), 4, 9.5, 4), at(new T.ConeGeometry(5, 8, 8), 4, 15, 4), at(new T.ConeGeometry(3.4, 7, 8), 4, 20, 4)]) }],
+  bush: () => [{ geo: at(blobGeo(4.2, 3.2, 4.2, 1, 0.15), 4, 3.0, 4) }],
+  flower: () => [{ geo: mergeGeos([at(new T.CylinderGeometry(0.35, 0.35, 5, 6), 2, 2.5, 2), at(new T.ConeGeometry(1.2, 2.6, 4), 1.2, 2.4, 2)]), color: '#237841' },
+    { geo: mergeGeos([0, 1, 2, 3, 4].map(i => at(new T.SphereGeometry(0.95, 8, 6), 2 + Math.cos(i * 1.2566) * 1.15, 5.6, 2 + Math.sin(i * 1.2566) * 1.15))) },
+    { geo: at(new T.SphereGeometry(0.75, 8, 6), 2, 5.8, 2), color: '#F2CD37' }],
+  grass: () => [{ geo: mergeGeos([boxBrickGeo(1, 1, 1, false), ...[0, 1, 2, 3, 4].map(i => { const c = new T.ConeGeometry(0.45, 3.2 + (i % 2), 4); c.rotateZ((i - 2) * 0.18); return at(c, 0.9 + i * 0.55, 3.2, 1.4 + (i % 2) * 1.2); })]) }],
+  rock: () => [{ geo: at(blobGeo(3.8, 2.6, 3.4, 1, 0.25), 4, 2.4, 4) }],
+  lamp: () => [{ geo: mergeGeos([boxBrickGeo(1, 1, 1, false), at(new T.CylinderGeometry(0.5, 0.5, 26, 8), 2, 14, 2), at(new T.BoxGeometry(3.6, 0.8, 3.6), 2, 27.4, 2)]), color: '#1B2A34' },
+    { geo: at(new T.BoxGeometry(2.6, 2.4, 2.6), 2, 25.8, 2), mat: 'lamp' }],
+  fence: () => [{ geo: mergeGeos([boxBrickGeo(4, 1, 1, false), ...[0, 1, 2, 3].map(i => at(new T.BoxGeometry(0.9, 4.6, 0.9), i * LU + 2, 3.1, 2)), at(new T.BoxGeometry(4 * LU - 0.4, 0.8, 0.7), 8, 3.6, 2), at(new T.BoxGeometry(4 * LU - 0.4, 0.8, 0.7), 8, 5.3, 2)]) }]
+};
+
+/* ---- katalog ---- */
+const LEGO_TYPES = {};
+const LEGO_CATS = ['Klocki', 'Płytki', 'Gładkie', 'Dekoracje', 'Z nadrukiem'];
+function addType(id, def) { LEGO_TYPES[id] = def; }
+for (const [w, d] of [[1, 1], [1, 2], [1, 3], [1, 4], [1, 6], [1, 8], [2, 2], [2, 3], [2, 4], [2, 6], [2, 8]]) addType(`b${w}x${d}`, { cat: 'Klocki', name: `Klocek ${w}×${d}`, w, d, h: 3, parts: () => [{ geo: boxBrickGeo(w, d, 3) }] });
+for (const [w, d] of [[1, 1], [1, 2], [1, 4], [2, 2], [2, 4], [2, 6], [4, 4], [4, 6], [6, 6], [8, 8], [16, 16]]) addType(`p${w}x${d}`, { cat: 'Płytki', name: `Płytka ${w}×${d}`, w, d, h: 1, parts: () => [{ geo: boxBrickGeo(w, d, 1) }] });
+for (const [w, d] of [[1, 1], [1, 2], [1, 4], [2, 2], [2, 4], [4, 4]]) addType(`t${w}x${d}`, { cat: 'Gładkie', name: `Gładka ${w}×${d}`, w, d, h: 1, parts: () => [{ geo: boxBrickGeo(w, d, 1, false) }] });
+const decorDefs = [['tree', 'Drzewo', 2, 2, 12, '#237841'], ['pine', 'Choinka', 2, 2, 15, '#184632'], ['bush', 'Krzak', 2, 2, 4, '#237841'], ['flower', 'Kwiatek', 1, 1, 4, '#C91A09'],
+  ['grass', 'Trawa', 1, 1, 3, '#BBE90B'], ['rock', 'Kamień', 2, 2, 3, '#A0A5A9'], ['lamp', 'Latarnia', 1, 1, 18, '#1B2A34'], ['fence', 'Płotek', 4, 1, 4, '#F4F4F4']];
+for (const [id, name, w, d, h, def] of decorDefs) addType(id, { cat: 'Dekoracje', name, w, d, h, defColor: def, parts: DECOR[id] });
+const printDefs = [['monitor', 'Monitor', 3, 1, 6, 'front', 'screen', '#1B2A34'], ['tv', 'Telewizor', 4, 1, 9, 'front', 'tv', '#1B2A34'], ['pc', 'Komputer', 1, 2, 6, 'front', 'pc', '#1B2A34'],
+  ['keyboard', 'Klawiatura', 4, 1, 1, 'top', 'keys', '#1B2A34'], ['poster', 'Plakat', 2, 1, 6, 'front', 'poster', '#F4F4F4'], ['clock', 'Zegar', 2, 1, 6, 'front', 'clock', '#F4F4F4'],
+  ['sign', 'Szyld CAFE', 4, 1, 3, 'front', 'sign', '#0A3463'], ['panel', 'Panel sterowania', 2, 2, 1, 'top', 'panel', '#6C6E68']];
+for (const [id, name, w, d, h, face, kind, def] of printDefs) addType(id, {
+  cat: 'Z nadrukiem', name, w, d, h, defColor: def,
+  parts: () => [{ geo: boxBrickGeo(w, d, h, face !== 'top') }, { geo: decalPlane(w, d, h, face), mat: 'decal:' + kind }]
+});
+const partsCache = {};
+const typeParts = id => partsCache[id] || (partsCache[id] = LEGO_TYPES[id].parts());
+
+/* ---- materiały ---- */
+const legoPlastic = new T.MeshStandardMaterial({ color: '#ffffff', roughness: 0.28, metalness: 0.0 });
+const legoLamp = new T.MeshStandardMaterial({ color: '#fff3c0', emissive: '#ffd77a', emissiveIntensity: 1 });
+const decalMats = {};
+function partMaterial(p) {
+  if (p.mat === 'lamp') return legoLamp;
+  if (p.mat && p.mat.startsWith('decal:')) { const k = p.mat.slice(6); return decalMats[k] || (decalMats[k] = new T.MeshStandardMaterial({ map: decalTex(k), roughness: 0.35, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); }
+  return legoPlastic;
+}
+
+/* ---- mapa: model + render (InstancedMesh na typ/część) ---- */
+const legoGroup = new T.Group(); scene.add(legoGroup);
+let legoDirty = true, legoOcc = new Map(), legoMeshes = [];
+const defaultLego = () => ({ base: { on: false, size: 48, color: '#237841' }, bricks: [] });
+function legoDoc() { if (!state.scene.lego) state.scene.lego = defaultLego(); return state.scene.lego; }
+const footprint = b => { const t = LEGO_TYPES[b.t]; return b.r % 2 ? [t.d, t.w] : [t.w, t.d]; };
+function brickMatrix(b) {
+  const t = LEGO_TYPES[b.t], [W, D] = footprint(b), m = new T.Matrix4();
+  m.makeTranslation(b.x * LU + W * LU / 2, b.y * LPH, b.z * LU + D * LU / 2)
+    .multiply(new T.Matrix4().makeRotationY(b.r * Math.PI / 2))
+    .multiply(new T.Matrix4().makeTranslation(-t.w * LU / 2, 0, -t.d * LU / 2));
+  return m;
+}
+function occCells(b, fn) {
+  const t = LEGO_TYPES[b.t], [W, D] = footprint(b);
+  for (let i = 0; i < W; i++) for (let j = 0; j < D; j++) for (let k = 0; k < t.h; k++) fn(`${b.x + i},${b.y + k},${b.z + j}`);
+}
+function rebuildOcc() { legoOcc = new Map(); legoDoc().bricks.forEach((b, i) => occCells(b, key => legoOcc.set(key, i))); }
+function buildBaseplate(base) {
+  const S = base.size, half = S / 2, plate = new T.Mesh(at(new T.BoxGeometry(S * LU, LPH, S * LU), 0, -LPH / 2, 0), legoPlastic.clone());
+  plate.material.color.set(base.color); plate.userData.legoBase = true; legoGroup.add(plate); legoMeshes.push({ dispose() { plate.geometry.dispose(); plate.material.dispose(); }, isWrap: true, obj: plate });
+  const stud = new T.CylinderGeometry(0.3 * LU, 0.3 * LU, 0.85, 10), inst = new T.InstancedMesh(stud, plate.material, S * S), m = new T.Matrix4();
+  let n = 0; for (let i = 0; i < S; i++) for (let j = 0; j < S; j++) inst.setMatrixAt(n++, m.makeTranslation((i - half + 0.5) * LU, 0.425, (j - half + 0.5) * LU));
+  inst.userData.legoBase = true; legoGroup.add(inst); legoMeshes.push({ dispose() { stud.dispose(); }, isWrap: true, obj: inst });
+}
+function rebuildLego() {
+  legoDirty = false;
+  for (const w of legoMeshes) { legoGroup.remove(w.obj); w.dispose(); }
+  legoMeshes = [];
+  const doc = legoDoc(); legoGroup.visible = state.ui.legoShow !== false;
+  if (doc.base.on) buildBaseplate(doc.base);
+  const groups = new Map();
+  doc.bricks.forEach((b, i) => { if (!LEGO_TYPES[b.t]) return; if (!groups.has(b.t)) groups.set(b.t, []); groups.get(b.t).push(i); });
+  const col = new T.Color();
+  for (const [tid, idxs] of groups) {
+    typeParts(tid).forEach(p => {
+      const inst = new T.InstancedMesh(p.geo, partMaterial(p), idxs.length);
+      idxs.forEach((bi, k) => { const b = doc.bricks[bi]; inst.setMatrixAt(k, brickMatrix(b)); inst.setColorAt(k, col.set(p.color || (p.mat ? '#ffffff' : b.c))); });
+      inst.userData.legoIdx = idxs; if (p.mat === 'lamp') inst.userData.neon = '#7a5a20';
+      legoGroup.add(inst); legoMeshes.push({ dispose() { inst.dispose(); }, obj: inst });
+    });
+  }
+  rebuildOcc();
+}
+
+/* ---- wybór miejsca: raycast w klocki / płytę bazową / ziemię ---- */
+const legoRay = new T.Raycaster();
+function legoHit(sx, sy) {
+  legoRay.setFromCamera(new T.Vector2(sx / viewW * 2 - 1, -(sy / viewH) * 2 + 1), camera);
+  if (legoGroup.visible) for (const h of legoRay.intersectObject(legoGroup, true)) {
+    const o = h.object;
+    if (o.userData.legoIdx && h.instanceId != null) {
+      const m = new T.Matrix4(); o.getMatrixAt(h.instanceId, m);
+      const n = h.face.normal.clone().transformDirection(m).normalize();
+      return { point: h.point, normal: n, brick: o.userData.legoIdx[h.instanceId] };
+    }
+    if (o.userData.legoBase) return { point: h.point, normal: V3(0, 1, 0), brick: null };
+  }
+  const p = new T.Vector3();
+  return legoRay.ray.intersectPlane(new T.Plane(V3(0, 1, 0), 0), p) ? { point: p, normal: V3(0, 1, 0), brick: null } : null;
+}
+function cellsFree(b) { let ok = true; occCells(b, k => { if (legoOcc.has(k)) ok = false; }); return ok; }
+function placementAt(sx, sy) {
+  const L = state.ui.lego, hit = legoHit(sx, sy); if (!hit) return null;
+  const t = LEGO_TYPES[L.type], b = { t: L.type, r: L.rot, c: L.color, x: 0, y: 0, z: 0 }, [W, D] = footprint(b), n = hit.normal;
+  const p = hit.point.clone().addScaledVector(n, 0.05), cx = Math.floor(p.x / LU), cz = Math.floor(p.z / LU), doc = legoDoc();
+  const hb = hit.brick != null ? doc.bricks[hit.brick] : null;
+  b.x = cx - Math.floor((W - 1) / 2); b.z = cz - Math.floor((D - 1) / 2);
+  if (n.y > 0.5) b.y = hb ? hb.y + LEGO_TYPES[hb.t].h : 0;
+  else if (n.y < -0.5) b.y = Math.max(0, (hb ? hb.y : 0) - t.h);
+  else {
+    b.y = hb ? hb.y : 0;
+    if (n.x > 0.5) b.x = cx; else if (n.x < -0.5) b.x = cx - W + 1;
+    if (n.z > 0.5) b.z = cz; else if (n.z < -0.5) b.z = cz - D + 1;
+  }
+  if (doc.base.on) { const hs = doc.base.size / 2; if (b.x < -hs || b.z < -hs || b.x + W > hs || b.z + D > hs) return null; }   // tylko na płycie bazowej
+  let tries = 0;
+  while (!cellsFree(b) && tries++ < 60) b.y++;
+  return cellsFree(b) ? b : null;
+}
+
+/* ---- duszek podglądu ---- */
+const ghost = new T.Group(); ghost.visible = false; scene.add(ghost);
+const ghostMat = new T.MeshStandardMaterial({ color: '#ffffff', transparent: true, opacity: 0.55, depthWrite: false, roughness: 0.3 });
+let ghostKey = '';
+function setGhostType(id) {
+  if (ghostKey === id) return; ghostKey = id;
+  while (ghost.children.length) ghost.remove(ghost.children[0]);
+  for (const p of typeParts(id)) { const m = new T.Mesh(p.geo, ghostMat); m.userData.role = 'skip'; ghost.add(m); }
+}
+function updateGhost(sx, sy) {
+  const L = state.ui.lego;
+  if (!L.mode || L.tool !== 'place' || sx == null) { if (ghost.visible) { ghost.visible = false; requestRender(); } return; }
+  const b = placementAt(sx, sy);
+  setGhostType(L.type);
+  if (!b) { ghost.visible = false; requestRender(); return; }
+  ghost.visible = true; ghostMat.color.set(L.color);
+  ghost.matrixAutoUpdate = false; ghost.matrix.copy(brickMatrix(b)); ghost.matrixWorldNeedsUpdate = true;
+  requestRender();
+}
+
+/* ---- akcje narzędzi ---- */
+function legoAct(sx, sy) {
+  const L = state.ui.lego, doc = legoDoc();
+  if (L.tool === 'place') {
+    const b = placementAt(sx, sy); if (!b) { toast('Tu nie zmieści się klocek'); return; }
+    doc.bricks.push(b);
+  } else {
+    const hit = legoHit(sx, sy); if (!hit || hit.brick == null) return;
+    const b = doc.bricks[hit.brick];
+    if (L.tool === 'erase') doc.bricks.splice(hit.brick, 1);
+    else if (L.tool === 'paint') b.c = L.color;
+    else if (L.tool === 'pick') { L.type = b.t; L.color = b.c; L.rot = b.r; UI.rebuild(); LegoBar.sync(); return; }
+  }
+  legoDirty = true; commit(); requestRender(); LegoBar.sync();
+}
+function setLegoMode(on) {
+  const L = state.ui.lego; L.mode = on;
+  const doc = legoDoc(); if (on && !doc.bricks.length && !doc.base.on) { doc.base.on = true; legoDirty = true; commit(); }
+  if (on) { if (state.areaMode) setAreaMode(false); state.sel = null; }
+  ghost.visible = false; $('legoBar').classList.toggle('show', on); $('bLego').classList.toggle('on', on); document.body.classList.toggle('lego-on', on);
+  UI.rebuild(); LegoBar.sync(); requestRender(); scheduleSave();
+}
+function setLegoType(id) {
+  const L = state.ui.lego; L.type = id;
+  const def = LEGO_TYPES[id].defColor; if (def) L.color = def;
+  ghostKey = ''; LegoBar.sync(); scheduleSave();
+}
+
+/* ---- pływający pasek narzędzi (duże przyciski, wygodne na telefonie) ---- */
+const LegoBar = (() => {
+  const bar = $('legoBar');
+  function sync() {
+    const L = state.ui.lego;
+    bar.querySelectorAll('[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === L.tool));
+    const sw = $('legoCur'); if (sw) { sw.style.background = L.color; sw.title = LEGO_TYPES[L.type].name; }
+    const nm = $('legoCurName'); if (nm) nm.textContent = LEGO_TYPES[L.type].name;
+    const cnt = $('legoCount'); if (cnt) cnt.textContent = legoDoc().bricks.length;
+  }
+  bar.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const L = state.ui.lego;
+    if (b.dataset.tool) { L.tool = b.dataset.tool; ghost.visible = false; }
+    else if (b.dataset.act === 'rot') { L.rot = (L.rot + 1) % 4; }
+    else if (b.dataset.act === 'undo') undo();
+    else if (b.dataset.act === 'exit') { setLegoMode(false); return; }
+    sync(); requestRender(); scheduleSave();
+  });
+  return { sync };
+})();
+
+/* ---- miniatury klocków do palety ---- */
+let lthumb = null; const lthumbCache = new Map();
+function legoThumb(id, color) {
+  const key = id + color; if (lthumbCache.has(key)) return lthumbCache.get(key);
+  if (!lthumb) {
+    const sc = new T.Scene(); sc.add(new T.HemisphereLight('#ffffff', '#445', 0.9)); const dl = new T.DirectionalLight('#ffffff', 1.1); dl.position.set(40, 80, 60); sc.add(dl);
+    lthumb = { sc, cam: new T.PerspectiveCamera(30, 1, 0.5, 800), g: new T.Group(), cv: document.createElement('canvas') }; sc.add(lthumb.g); lthumb.cv.width = lthumb.cv.height = 96;
+  }
+  const g = lthumb.g; while (g.children.length) g.remove(g.children[0]);
+  for (const p of typeParts(id)) { const mat = p.mat ? partMaterial(p) : new T.MeshStandardMaterial({ color: p.color || color, roughness: 0.3 }); g.add(new T.Mesh(p.geo, mat)); }
+  const b = new T.Box3().setFromObject(g), c = b.getCenter(new T.Vector3()), s = b.getSize(new T.Vector3()), d = Math.max(s.x, s.y, s.z) / (2 * Math.tan(15 * D2R)) * 1.05;
+  lthumb.cam.position.set(c.x + d * 0.62, c.y + d * 0.55, c.z + d * 0.56); lthumb.cam.lookAt(c);
+  renderer.setRenderTarget(null); renderer.setSize(96, 96, false); renderer.outputColorSpace = T.SRGBColorSpace;
+  renderer.setClearColor('#151d18', 1); renderer.clear(); renderer.render(lthumb.sc, lthumb.cam); renderer.outputColorSpace = T.LinearSRGBColorSpace;
+  const x = lthumb.cv.getContext('2d'); x.clearRect(0, 0, 96, 96); x.drawImage(glCanvas, 0, 0);
+  const url = lthumb.cv.toDataURL(); lthumbCache.set(key, url); sizeKey = ''; return url;
+}
 
 /* =====================================================================
    UI: panel sterowania
@@ -2227,6 +2588,34 @@ const UI = (() => {
       propsForm(body, L);
     }
   }
+  function buildLego(body) {
+    const L = state.ui.lego, doc = legoDoc();
+    body.append(h('div', { class: 'btns' }, btn(L.mode ? 'Zakończ budowanie' : 'Włącz budowanie', () => setLegoMode(!L.mode), L.mode ? 'on' : 'accent')));
+    if (!L.mode) {
+      body.append(h('div', { class: 'note' }, `Mapa: ${doc.bricks.length} klocków. Włącz budowanie, wybierz klocek i kolor, a potem tapnij w płytę bazową lub w inny klocek.`));
+      check(body, 'Pokaż mapę LEGO', () => state.ui.legoShow, v => { state.ui.legoShow = v; legoDirty = true; }, false, true);
+      return;
+    }
+    sub(body, 'Kategoria');
+    body.append(h('div', { class: 'ltabs' }, LEGO_CATS.map(c => h('button', { class: L.cat === c ? 'on' : '', onclick: () => { L.cat = c; rebuild(); } }, c))));
+    const grid = h('div', { class: 'lgrid' });
+    for (const id in LEGO_TYPES) {
+      const t = LEGO_TYPES[id]; if (t.cat !== L.cat) continue;
+      grid.append(h('button', { class: L.type === id ? 'on' : '', title: t.name, onclick: () => { setLegoType(id); L.tool = 'place'; LegoBar.sync(); rebuild(); } },
+        h('img', { src: legoThumb(id, t.defColor || L.color), alt: '' }), h('span', null, t.name)));
+    }
+    body.append(grid);
+    sub(body, 'Kolor');
+    body.append(h('div', { class: 'lcols' }, LEGO_COLORS.map(([n, c]) => h('button', { class: L.color === c ? 'on' : '', title: n, style: `background:${c}`, onclick: () => { L.color = c; LegoBar.sync(); rebuild(); } }))));
+    sub(body, 'Płyta bazowa');
+    check(body, 'Płyta bazowa', () => doc.base.on, v => { doc.base.on = v; legoDirty = true; });
+    select(body, 'Rozmiar', [[32, '32 \u00d7 32'], [48, '48 \u00d7 48'], [64, '64 \u00d7 64']], () => doc.base.size, v => { doc.base.size = +v; legoDirty = true; });
+    select(body, 'Kolor płyty', LEGO_COLORS.map(([n, c]) => [c, n]), () => doc.base.color, v => { doc.base.color = v; legoDirty = true; });
+    body.append(h('div', { class: 'btns' }, btn('Wyczyść mapę', () => {
+      if (!doc.bricks.length || confirm('Usunąć wszystkie klocki z mapy?')) { doc.bricks = []; legoDirty = true; commit(); requestRender(); LegoBar.sync(); rebuild(); }
+    }, 'danger')));
+    body.append(h('div', { class: 'note' }, 'R: obrót, 1: postaw, 2: usuń, 3: maluj, 4: pipeta, Esc: koniec. Przeciągnięcie obraca kamerę, dwa palce przybliżają.'));
+  }
   function buildScene(body) {
     const env = state.scene.env;
     select(body, 'Scena', Object.keys(SCENES).map(k => [k, SCENES[k].label]), () => env.id, v => { setEnv(v, true); }, true);
@@ -2262,6 +2651,7 @@ const UI = (() => {
     $('bArea').classList.toggle('on', state.areaMode);
   }
   function init() {
+    addSection('lego', 'Budowanie LEGO', true, buildLego);
     addSection('cat', 'Kot', true, buildCat); addSection('layers', 'Warstwy', true, buildLayers);
     addSection('acc', 'Akcesoria', false, buildAcc); addSection('veh', 'Obiekty', false, buildVeh);
     addSection('scene', 'Scena', true, buildScene); addSection('exp', 'Eksport', true, buildExport);
@@ -2276,13 +2666,14 @@ const UI = (() => {
 function resetScene() {
   clearRuntimes(); state.scene = defaultScene(); state.sel = null; state.lastCatId = state.scene.layers[0].id; anims.clear();
   setEnv(state.scene.env.id, true); state.frame = defaultFrame(); state.ui.ratio = '1:1';
-  hist.stack = []; hist.idx = -1; commit(); select(state.lastCatId);
+  legoDirty = true; hist.stack = []; hist.idx = -1; commit(); select(state.lastCatId);
 }
 function wireTopBar() {
   $('bUndo').onclick = undo; $('bRedo').onclick = redo;
   $('bZoomIn').onclick = () => { zoomBy(1 / 1.25); requestRender(); }; $('bZoomOut').onclick = () => { zoomBy(1.25); requestRender(); };
   $('bFit').onclick = () => { setCameraTo(envState.cam); requestRender(); };
   $('bArea').onclick = () => setAreaMode(!state.areaMode); $('bExportTop').onclick = exportPNG;
+  $('bLego').onclick = () => setLegoMode(!state.ui.lego.mode);
   $('bNew').onclick = () => { if (confirm('Rozpocząć nową scenę? Bieżąca scena zostanie usunięta.')) resetScene(); };
 }
 function init() {
@@ -2294,7 +2685,7 @@ function init() {
   state.lastCatId = firstCat ? firstCat.id : null; state.sel = state.lastCatId;
   fitRenderer(); wireTopBar(); UI.init(); commit(); requestRender();
   new ResizeObserver(() => requestRender()).observe(glCanvas);
-  window.__pfp3d = { state, cam, hist, RTL, scene, camera, renderer, fx, jointHandles, selLayer, layerScreenRect, outputSize, setEnv, applyPose, POSES, aimBone, addAccessory, addVehicle, seatCat, exportPNG, setAreaMode };
+  window.__pfp3d = { legoDoc, LEGO_TYPES, setLegoMode, setLegoType, legoAct, placementAt, state, cam, hist, RTL, scene, camera, renderer, fx, jointHandles, selLayer, layerScreenRect, outputSize, setEnv, applyPose, POSES, aimBone, addAccessory, addVehicle, seatCat, exportPNG, setAreaMode };
 }
 init();
 })();
